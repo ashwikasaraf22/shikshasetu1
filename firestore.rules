@@ -1,0 +1,77 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isParticipant(docId) {
+      return request.auth.uid in get(/databases/$(database)/documents/chats/$(docId)).data.participants;
+    }
+    
+    function isTeacherForClass(classId) {
+        return get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+    
+    function isStudentInClass(classId) {
+        return request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.studentIds;
+    }
+
+    // users/{userId}
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isRole('admin'); // Only admins can create user profiles
+      allow update: if isRole('admin') || isOwner(userId); // Admins or the user themselves can update
+      allow delete: if isRole('admin'); // Only admins can delete user profiles
+    }
+
+    // classes/{classId}
+    match /classes/{classId} {
+      allow read: if isSignedIn(); // All signed-in users can see class lists
+      allow create, update, delete: if isRole('admin'); // Only admins can manage classes
+    }
+
+    // tests/{testId}
+    match /tests/{testId} {
+      allow read: if isRole('teacher') && isTeacherForClass(resource.data.classId) || isRole('student') && isStudentInClass(resource.data.classId);
+      allow create: if isRole('teacher'); // Any teacher can create a test (draft)
+      allow update: if isRole('teacher') && resource.data.createdBy == request.auth.uid; // Only the creating teacher can update
+      allow delete: if isRole('teacher') && resource.data.createdBy == request.auth.uid; // Only the creating teacher can delete
+    }
+
+    // submissions/{submissionId}
+    match /submissions/{submissionId} {
+      allow read: if isOwner(resource.data.studentId) || isRole('teacher') && isTeacherForClass(resource.data.classId);
+      allow create: if isRole('student') && isOwner(request.resource.data.studentId);
+      allow update: if isOwner(resource.data.studentId); // A student can update their own answers before final submission
+      allow delete: never; // Submissions should not be deletable
+    }
+
+    // chats/{chatId}
+    match /chats/{chatId} {
+        allow read, write: if isParticipant(chatId);
+
+        match /messages/{messageId} {
+            allow read, create: if isParticipant(chatId);
+        }
+    }
+
+    // calls/{callId}
+    match /calls/{callId} {
+        // A user can create a call if they are a participant in the associated chat.
+        // A user can read, update, or delete a call document if they are a participant.
+        allow read, write, delete: if isSignedIn() && request.auth.uid in resource.data.participants;
+    }
+  }
+}
