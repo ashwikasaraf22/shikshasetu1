@@ -4,14 +4,16 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { MCQQuestion, EvaluationResult } from '@/lib/types';
+import type { MCQQuestion, EvaluationResult, UserProfile } from '@/lib/types';
 
 /**
  * Save an ad-hoc quiz test + the student's submission.
@@ -23,7 +25,12 @@ export async function saveAdhocQuizSubmission(params: {
   subject: string;
   chapter: string;
   level: 'Easy' | 'Medium' | 'Hard';
-  questions: { id: string; text: string; options: { label: string; value: string }[]; correctIndex: number }[];
+  questions: {
+    id: string;
+    text: string;
+    options: { label: string; value: string }[];
+    correctIndex: number;
+  }[];
   answers: number[]; // -1 if skipped
 }) {
   const { userId, subject, chapter, level, questions, answers } = params;
@@ -87,7 +94,11 @@ export async function saveAdhocQuizSubmission(params: {
     submittedAt: serverTimestamp(),
   });
 
-  return { testId: testDocRef.id, correct: correctCount, total: questions.length };
+  return {
+    testId: testDocRef.id,
+    correct: correctCount,
+    total: questions.length,
+  };
 }
 
 /**
@@ -110,19 +121,58 @@ export async function createQuestionSubmission(params: {
   });
 }
 
-/**
- * Link a parent with a student using the child’s email (call this once somewhere appropriate).
- * Adds the found student's uid to parent.users.studentIds (arrayUnion).
+/* -------------------------------------------------------------------
+ * 🧩 Parent–Child Mapping Helpers
+ * -------------------------------------------------------------------
  */
-export async function linkParentAndStudentByEmail(parentUid: string, childEmail: string) {
-  const q = query(collection(db, 'users'), where('email', '==', childEmail));
+
+/**
+ * Fetch a student profile by their email (only if role === 'student')
+ */
+export async function getStudentByEmail(
+  email: string
+): Promise<UserProfile | null> {
+  const q = query(
+    collection(db, 'users'),
+    where('email', '==', email),
+    where('role', '==', 'student')
+  );
   const snap = await getDocs(q);
-  if (snap.empty) {
-    throw new Error('No student found with that email.');
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { uid: d.id, ...(d.data() as any) } as UserProfile;
+}
+
+/**
+ * Link a parent with a child (creates the Firestore container automatically)
+ * Structure: parents/{parentUid}/children/{childUid}
+ */
+export async function linkParentToChild(
+  parentUid: string,
+  childUid: string
+): Promise<void> {
+  const linkRef = doc(db, 'parents', parentUid, 'children', childUid);
+  await setDoc(linkRef, { childUid, linkedAt: Date.now() });
+}
+
+/**
+ * Fetch all children linked to a parent
+ */
+export async function getChildrenForParent(
+  parentUid: string
+): Promise<UserProfile[]> {
+  const childrenCol = collection(db, 'parents', parentUid, 'children');
+  const links = await getDocs(childrenCol);
+  if (links.empty) return [];
+  const results: UserProfile[] = [];
+
+  for (const l of links.docs) {
+    const { childUid } = l.data() as { childUid: string };
+    const uref = doc(db, 'users', childUid);
+    const usnap = await getDoc(uref);
+    if (usnap.exists()) {
+      results.push({ uid: usnap.id, ...(usnap.data() as any) } as UserProfile);
+    }
   }
-  const childDoc = snap.docs[0]; // assume first
-  await updateDoc(doc(db, 'users', parentUid), {
-    studentIds: arrayUnion(childDoc.id),
-  });
-  return childDoc.id;
+  return results;
 }

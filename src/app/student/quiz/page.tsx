@@ -7,8 +7,12 @@ import { BookText } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { preloadTranslationCache, translateQuestionsOnTheFly, normalizeLang } from '@/lib/translateQuizLite';
 
+/** Firestore imports */
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 /** --------------------------
- *  QUESTION BANK (unchanged content)
+ *  TYPES
  *  -------------------------- */
 
 type Option = { label: string; value: string };
@@ -18,7 +22,7 @@ type Question = {
   options: Option[];
   correctIndex: number; // 0-based
 };
-type Level = 'Easy' | 'Medium' | 'Hard';
+type Level = 'Easy';
 
 type QuizBank = {
   [subject: string]: {
@@ -28,253 +32,428 @@ type QuizBank = {
   };
 };
 
+// The i18n JSON in /public/quiz/* has Grade at the top level:
+type Grade = '7' | '8' | '9';
+type I18nBank = Record<Grade, QuizBank>;
+
+/** --------------------------
+ *  HELPERS
+ *  -------------------------- */
+
 const o = (arr: string[]): Option[] =>
   arr.map((v, i) => ({ label: String.fromCharCode(97 + i) + ') ' + v, value: v }));
 
-const QUIZ_BANK: QuizBank = {
-  Physics: {
-    Motion: {
+function pickGradeFromString(raw: any): Grade | null {
+  if (raw == null) return null;
+  const s = String(raw).toLowerCase();
+  const m = s.match(/(?:class|grade|std|standard)?\s*(7|8|9)\b/);
+  if (m) return m[1] as Grade;
+  if (/7th|\bvii\b|seven|saat/.test(s)) return '7';
+  if (/8th|\bviii\b|eight|aath/.test(s)) return '8';
+  if (/9th|\bix\b|nine|nau/.test(s)) return '9';
+  return null;
+}
+
+function resolveUserGrade(user: any, params: URLSearchParams): Grade {
+  // 1) Prefer URL query if present
+  const qp =
+    pickGradeFromString(params.get('class')) ||
+    pickGradeFromString(params.get('grade')) ||
+    pickGradeFromString(params.get('standard'));
+  if (qp) return qp;
+
+  // 2) Fall back to user object (cover common field names)
+  const fromUser =
+    pickGradeFromString(user?.className) ||
+    pickGradeFromString(user?.class) ||
+    pickGradeFromString(user?.grade) ||
+    pickGradeFromString(user?.standard) ||
+    pickGradeFromString(user?.studentClass);
+  if (fromUser) return fromUser;
+
+  // 3) Sensible default if nothing is provided
+  return '9';
+}
+
+/** --------------------------
+ *  QUESTION BANKS (by Class) — ENGLISH DEFAULTS
+ *  -------------------------- */
+
+/* -------------------- CLASS 7 -------------------- */
+const QUIZ_BANK_7: QuizBank = {
+  Science: {
+    Magnets: {
       Easy: [
-        { id: 'phy-e-1', text: 'A force of 40 N acts at 0° to the horizontal. Its horizontal component is:', options: o(['40 N', '0 N', '20 N', '80 N']), correctIndex: 0 },
-        { id: 'phy-e-2', text: 'A force of 10 N acts at 90°. Its horizontal component is:', options: o(['0 N', '10 N', '5 N', '20 N']), correctIndex: 0 },
-        { id: 'phy-e-3', text: 'Which component decides how far a projectile travels horizontally?', options: o(['Vertical component', 'Horizontal component', 'Resultant force', 'None']), correctIndex: 1 },
-        { id: 'phy-e-4', text: 'The path of a projectile is:', options: o(['Circle', 'Straight line', 'Parabola', 'Ellipse']), correctIndex: 2 },
-        { id: 'phy-e-5', text: 'The acceleration acting on a projectile in vertical direction is always:', options: o(['Zero', 'g (downward)', 'g (upward)', 'None']), correctIndex: 1 },
+        { id: 'g7-sci-mag-1', text: 'Like poles of two magnets will:', options: o(['Attract', 'Repel', 'Neither attract nor repel', 'First attract then repel']), correctIndex: 1 },
+        { id: 'g7-sci-mag-2', text: 'The ends of a bar magnet are called:', options: o(['Tips', 'Poles', 'Edges', 'Centers']), correctIndex: 1 },
+        { id: 'g7-sci-mag-3', text: 'A freely suspended bar magnet points approximately towards:', options: o(['Geographic East–West', 'Geographic North–South', 'Sky', 'Ground']), correctIndex: 1 },
+        { id: 'g7-sci-mag-4', text: 'Which is a natural magnet?', options: o(['Hematite', 'Magnetite (lodestone)', 'Galena', 'Bauxite']), correctIndex: 1 },
+        { id: 'g7-sci-mag-5', text: 'Magnetic field is strongest at:', options: o(['Middle', 'Poles', 'Random points', 'Edges only']), correctIndex: 1 },
       ],
-      Medium: [
-        { id: 'phy-m-1', text: 'A force of 60 N acts at 30°. Find the vertical component.', options: o(['30 N', '20 N', '60 N', '40 N']), correctIndex: 0 },
-        { id: 'phy-m-2', text: 'A stone is thrown horizontally with 15 m/s from a cliff. After 2 s, vertical displacement is (g = 10 m/s²):', options: o(['10 m', '20 m', '15 m', '25 m']), correctIndex: 1 },
-        { id: 'phy-m-3', text: 'A projectile is launched with speed u at angle θ. Maximum height is:', options: [{ label: 'a) (u² cos²θ) / (2g)', value: 'u^2 cos^2θ / 2g' }, { label: 'b) (u² sin²θ) / (2g)', value: 'u^2 sin^2θ / 2g' }], correctIndex: 1 },
-        { id: 'phy-m-4', text: 'A ball is projected with 10 m/s at 60°. Time of flight = ? (g = 10)', options: o(['0.8 s', '1.5 s', '1.7 s', '2 s']), correctIndex: 2 },
-        { id: 'phy-m-5', text: 'Which of the following remains constant in projectile motion (ideal conditions)?', options: o(['Vertical velocity', 'Horizontal velocity', 'Vertical displacement', 'Acceleration']), correctIndex: 1 },
+    },
+    MethodsOfSeperation: {
+      Easy: [
+        { id: 'g7-sci-sep-1', text: 'Which method separates sand from water?', options: o(['Evaporation', 'Filtration', 'Distillation', 'Chromatography']), correctIndex: 1 },
+        { id: 'g7-sci-sep-2', text: 'Evaporation is useful to obtain:', options: o(['Salt from salt solution', 'Oil from water', 'Iron filings from sand', 'Stones from rice']), correctIndex: 0 },
+        { id: 'g7-sci-sep-3', text: 'Sieving is best for separating:', options: o(['Solids of different sizes', 'Liquids', 'Dissolved solids', 'Gases']), correctIndex: 0 },
+        { id: 'g7-sci-sep-4', text: 'To separate cream from milk we use:', options: o(['Sedimentation', 'Centrifugation', 'Sublimation', 'Decantation']), correctIndex: 1 },
+        { id: 'g7-sci-sep-5', text: 'Camphor can be separated from salt by:', options: o(['Sublimation', 'Filtration', 'Crystallisation', 'Magnetic separation']), correctIndex: 0 },
       ],
-      Hard: [
-        { id: 'phy-h-1', text: 'A force of 100 N acts at 53°. Find horizontal and vertical components (approx).', options: o(['60 N, 80 N', '80 N, 60 N', '50 N, 90 N', '70 N, 70 N']), correctIndex: 0 },
-        { id: 'phy-h-2', text: 'A projectile is thrown at 20 m/s at 30°. Find total time of flight. (g = 10)', options: o(['2 s', '3 s', '4 s', '5 s']), correctIndex: 0 },
-        { id: 'phy-h-3', text: 'A stone is projected at 45° with u = 14 m/s. Find maximum height. (g = 9.8)', options: o(['3 m', '5 m', '6 m', '7 m']), correctIndex: 1 },
-        { id: 'phy-h-4', text: 'Two projectiles A and B are launched with same speed but at 30° and 60°. Which has more range?', options: o(['A', 'B', 'Both equal', 'Cannot say']), correctIndex: 2 },
-        { id: 'phy-h-5', text: 'A ball is thrown with velocity 25 m/s at 45°. Find horizontal range. (g = 10)', options: o(['40 m', '50 m', '60 m', '62.5 m']), correctIndex: 3 },
+    },
+    MindfulEating: {
+      Easy: [
+        { id: 'g7-sci-me-1', text: 'Balanced diet provides:', options: o(['Only carbohydrates', 'All nutrients in right amounts', 'Only proteins', 'Only fats']), correctIndex: 1 },
+        { id: 'g7-sci-me-2', text: 'Excess junk food usually has:', options: o(['High vitamins and fibre', 'Low salt and sugar', 'High salt, sugar and fat', 'Only proteins']), correctIndex: 2 },
+        { id: 'g7-sci-me-3', text: 'Mindful eating encourages:', options: o(['Eating very fast', 'Ignoring hunger cues', 'Noticing taste and fullness', 'Skipping breakfast']), correctIndex: 2 },
+        { id: 'g7-sci-me-4', text: 'Fibre is mainly found in:', options: o(['Whole grains, fruits, vegetables', 'Butter and ghee', 'Meat only', 'Soft drinks']), correctIndex: 0 },
+        { id: 'g7-sci-me-5', text: 'Dehydration is prevented by:', options: o(['More oily food', 'Adequate water intake', 'Skipping water', 'Only tea/coffee']), correctIndex: 1 },
       ],
     },
   },
-
+  SSC: {
+    Family: {
+      Easy: [
+        { id: 'g7-ssc-fam-1', text: 'A nuclear family usually consists of:', options: o(['Parents and children', 'Grandparents only', 'Cousins and neighbours', 'Only siblings']), correctIndex: 0 },
+        { id: 'g7-ssc-fam-2', text: 'Shared responsibilities in a family help to build:', options: o(['Conflict', 'Cooperation', 'Isolation', 'Inequality']), correctIndex: 1 },
+        { id: 'g7-ssc-fam-3', text: 'Respecting elders and caring for younger ones shows:', options: o(['Discipline', 'Family values', 'Punishment', 'Competition']), correctIndex: 1 },
+        { id: 'g7-ssc-fam-4', text: 'A joint family includes:', options: o(['Only parents and one child', 'Extended relatives living together', 'Only friends', 'Only cousins separately']), correctIndex: 1 },
+        { id: 'g7-ssc-fam-5', text: 'Household chores are best described as:', options: o(['Only women’s work', 'Shared tasks', 'Children’s work only', 'Men’s work only']), correctIndex: 1 },
+      ],
+    },
+    OceansAndContinents: {
+      Easy: [
+        { id: 'g7-ssc-oc-1', text: 'The largest ocean is the:', options: o(['Indian', 'Arctic', 'Pacific', 'Atlantic']), correctIndex: 2 },
+        { id: 'g7-ssc-oc-2', text: 'How many continents are generally recognised?', options: o(['5', '6', '7', '8']), correctIndex: 2 },
+        { id: 'g7-ssc-oc-3', text: 'Africa is separated from Europe by the:', options: o(['Bering Strait', 'Strait of Gibraltar', 'English Channel', 'Palk Strait']), correctIndex: 1 },
+        { id: 'g7-ssc-oc-4', text: 'The smallest ocean is the:', options: o(['Arctic', 'Indian', 'Atlantic', 'Pacific']), correctIndex: 0 },
+        { id: 'g7-ssc-oc-5', text: 'Australia is also called the:', options: o(['Island Continent', 'Frozen Continent', 'Green Continent', 'Desert Continent']), correctIndex: 0 },
+      ],
+    },
+    Timeline: {
+      Easy: [
+        { id: 'g7-ssc-time-1', text: 'A timeline helps us understand:', options: o(['Weather only', 'Sequence of events', 'Geography only', 'Mathematics only']), correctIndex: 1 },
+        { id: 'g7-ssc-time-2', text: 'BC in a date means:', options: o(['Before Current', 'Before Christ', 'Binary Century', 'Between Centuries']), correctIndex: 1 },
+        { id: 'g7-ssc-time-3', text: 'AD stands for:', options: o(['After Death', 'Anno Domini', 'Annual Date', 'After Decade']), correctIndex: 1 },
+        { id: 'g7-ssc-time-4', text: 'Centuries are blocks of:', options: o(['10 years', '50 years', '100 years', '1000 years']), correctIndex: 2 },
+        { id: 'g7-ssc-time-5', text: 'A chronological order lists events:', options: o(['Randomly', 'From latest to earliest', 'From earliest to latest', 'Alphabetically']), correctIndex: 2 },
+      ],
+    },
+  },
   Mathematics: {
-    General: {
+    DataHandling: {
       Easy: [
-        { id: 'math-e-1', text: 'Solve for x: 2x + 7 = 15', options: o(['3', '4', '5', '6']), correctIndex: 1 },
-        { id: 'math-e-2', text: 'If the perimeter of a rectangle is 40 cm and its length is 12 cm, width = ?', options: o(['8 cm', '10 cm', '16 cm', '14 cm']), correctIndex: 0 },
-        { id: 'math-e-3', text: 'The sum of angles in a quadrilateral is:', options: o(['180°', '360°', '270°', '450°']), correctIndex: 1 },
-        { id: 'math-e-4', text: 'If the ratio of two numbers is 3:4 and their sum is 21, the smaller number = ?', options: o(['9', '8', '7', '6']), correctIndex: 0 },
-        { id: 'math-e-5', text: 'Find the value of 707^0:', options: o(['0', '1', '7', '49']), correctIndex: 1 },
-      ],
-      Medium: [
-        { id: 'math-m-1', text: 'Solve for x: 5x − 3 = 2x + 12', options: o(['3', '5', '7', '15']), correctIndex: 1 },
-        { id: 'math-m-2', text: 'The area of a triangle with base 10 cm and height 6 cm = ?', options: o(['30 cm²', '60 cm²', '36 cm²', '40 cm²']), correctIndex: 0 },
-        { id: 'math-m-3', text: 'If x : y = 2 : 3 and x + y = 25, then x = ?', options: o(['10', '12', '15', '20']), correctIndex: 0 },
-        { id: 'math-m-4', text: 'Probability of getting a head in a single coin toss = ?', options: o(['0', '1/2', '1/3', '1']), correctIndex: 1 },
-        { id: 'math-m-5', text: 'Simplify: 3² × 3³ = ?', options: [{ label: 'a) 3^5', value: '3^5' }, { label: 'b) 3^6', value: '3^6' }, { label: 'c) 9^5', value: '9^5' }, { label: 'd) 6^5', value: '6^5' }], correctIndex: 0 },
-      ],
-      Hard: [
-        { id: 'math-h-1', text: 'Solve for x: 2(x − 3) + 4 = 3x − 5', options: o(['3', '10', '12', '9']), correctIndex: 0 },
-        { id: 'math-h-2', text: 'The volume of a cuboid is 720 cm³. If length = 12 cm, breadth = 6 cm, height = ?', options: o(['10 cm', '12 cm', '8 cm', '9 cm']), correctIndex: 0 },
-        { id: 'math-h-3', text: 'A bag contains 5 red, 3 blue, and 2 green balls. Probability of picking a blue ball = ?', options: o(['1/2', '1/5', '3/10', '3/5']), correctIndex: 2 },
-        { id: 'math-h-4', text: 'If the angles of a triangle are in the ratio 2:3:4, find the largest angle.', options: o(['40°', '60°', '80°', '90°']), correctIndex: 2 },
-        { id: 'math-h-5', text: 'Simplify: (2³ × 2²) ÷ 2⁴ = ?', options: o(['2', '4', '8', '16']), correctIndex: 0 },
+        { id: 'g7-math-dh-1', text: 'Mode of 2, 3, 3, 5 is:', options: o(['2', '3', '5', 'No mode']), correctIndex: 1 },
+        { id: 'g7-math-dh-2', text: 'Mean of 4, 6, 10 is:', options: o(['6', '7', '8', '9']), correctIndex: 1 },
+        { id: 'g7-math-dh-3', text: 'Median of 1, 2, 9 is:', options: o(['1', '2', '9', '3']), correctIndex: 1 },
+        { id: 'g7-math-dh-4', text: 'A bar graph is useful for:', options: o(['Qualitative comparison by categories', 'Showing world maps', 'Angles only', '3D designs']), correctIndex: 0 },
+        { id: 'g7-math-dh-5', text: 'Range of 2, 7, 11 is:', options: o(['9', '11', '7', '5']), correctIndex: 0 },
       ],
     },
-  },
-
-  Chemistry: {
-    General: {
+    Symmetry: {
       Easy: [
-        { id: 'chem-e-1', text: 'Water is a:', options: o(['Element', 'Compound', 'Mixture', 'Alloy']), correctIndex: 1 },
-        { id: 'chem-e-2', text: 'Which of the following is a gas at room temperature?', options: o(['Sodium', 'Oxygen', 'Iron', 'Mercury']), correctIndex: 1 },
-        { id: 'chem-e-3', text: 'NaCl is commonly known as:', options: o(['Sugar', 'Salt', 'Baking soda', 'Lime']), correctIndex: 1 },
-        { id: 'chem-e-4', text: 'Which of these is acidic in nature?', options: o(['Lemon juice', 'Soap', 'Milk', 'Salt']), correctIndex: 0 },
-        { id: 'chem-e-5', text: 'The formula of carbon dioxide is:', options: o(['CO', 'CO₂', 'C₂O', 'O₂C']), correctIndex: 1 },
-      ],
-      Medium: [
-        { id: 'chem-m-1', text: 'The pH of water is:', options: o(['0', '7', '14', '1']), correctIndex: 1 },
-        { id: 'chem-m-2', text: 'Which element is used in making electrical wires?', options: o(['Silver', 'Copper', 'Iron', 'Lead']), correctIndex: 1 },
-        { id: 'chem-m-3', text: 'H₂O is made of:', options: o(['2 hydrogen + 1 oxygen', '2 oxygen + 1 hydrogen', '1 hydrogen + 1 oxygen', '3 hydrogen + 1 oxygen']), correctIndex: 0 },
-        { id: 'chem-m-4', text: 'Which of the following is a physical change?', options: o(['Burning wood', 'Melting ice', 'Rusting iron', 'Cooking food']), correctIndex: 1 },
-        { id: 'chem-m-5', text: 'Common gas in fizzy drinks is:', options: o(['Oxygen', 'Carbon dioxide', 'Nitrogen', 'Hydrogen']), correctIndex: 1 },
-      ],
-      Hard: [
-        { id: 'chem-h-1', text: 'Atomic number represents:', options: o(['Number of protons', 'Number of neutrons', 'Number of electrons', 'Mass of atom']), correctIndex: 0 },
-        { id: 'chem-h-2', text: 'Which of the following is a chemical change?', options: o(['Boiling water', 'Rusting iron', 'Melting wax', 'Dissolving sugar']), correctIndex: 1 },
-        { id: 'chem-h-3', text: 'Which of these is an alkali?', options: o(['HCl', 'NaOH', 'H₂SO₄', 'CO₂']), correctIndex: 1 },
-        { id: 'chem-h-4', text: 'Formula of baking soda is:', options: o(['NaHCO₃', 'NaCO₃', 'CaCO₃', 'KCl']), correctIndex: 0 },
-        { id: 'chem-h-5', text: 'Which element is a noble gas?', options: o(['Oxygen', 'Helium', 'Nitrogen', 'Carbon']), correctIndex: 1 },
+        { id: 'g7-math-sym-1', text: 'A square has how many lines of symmetry?', options: o(['2', '3', '4', '8']), correctIndex: 3 },
+        { id: 'g7-math-sym-2', text: 'A circle has:', options: o(['No line of symmetry', 'Exactly 2', 'Exactly 4', 'Infinite lines of symmetry']), correctIndex: 3 },
+        { id: 'g7-math-sym-3', text: 'Reflection symmetry is also called:', options: o(['Rotational symmetry', 'Line symmetry', 'Point symmetry', 'No symmetry']), correctIndex: 1 },
+        { id: 'g7-math-sym-4', text: 'An equilateral triangle has rotational symmetry of order:', options: o(['1', '2', '3', '6']), correctIndex: 2 },
+        { id: 'g7-math-sym-5', text: 'A rectangle has how many lines of symmetry?', options: o(['2', '4', '1', '0']), correctIndex: 0 },
       ],
     },
-  },
-
-  Biology: {
-    General: {
+    LinesAndAngles: {
       Easy: [
-        { id: 'bio-e-1', text: 'The basic unit of life is:', options: o(['Atom', 'Molecule', 'Cell', 'Tissue']), correctIndex: 2 },
-        { id: 'bio-e-2', text: 'Which part of plant makes food?', options: o(['Root', 'Stem', 'Leaf', 'Flower']), correctIndex: 2 },
-        { id: 'bio-e-3', text: 'Humans have how many chromosomes?', options: o(['23', '46', '44', '22']), correctIndex: 1 },
-        { id: 'bio-e-4', text: 'Which of these is a mammal?', options: o(['Lizard', 'Whale', 'Frog', 'Snake']), correctIndex: 1 },
-        { id: 'bio-e-5', text: 'Blood is pumped by the:', options: o(['Lung', 'Heart', 'Kidney', 'Brain']), correctIndex: 1 },
-      ],
-      Medium: [
-        { id: 'bio-m-1', text: 'Photosynthesis needs:', options: o(['Carbon dioxide + Water + Sunlight', 'Oxygen + Water + Sunlight', 'Carbon dioxide + Oxygen', 'Nitrogen + Water']), correctIndex: 0 },
-        { id: 'bio-m-2', text: 'The process of shedding old skin is called:', options: o(['Molting', 'Photosynthesis', 'Respiration', 'Germination']), correctIndex: 0 },
-        { id: 'bio-m-3', text: 'The largest organ in the human body is:', options: o(['Brain', 'Heart', 'Skin', 'Liver']), correctIndex: 2 },
-        { id: 'bio-m-4', text: 'Xylem transports:', options: o(['Water', 'Food', 'Oxygen', 'Minerals']), correctIndex: 0 },
-        { id: 'bio-m-5', text: 'Stomata are mainly found on:', options: o(['Roots', 'Leaves', 'Stem', 'Flower']), correctIndex: 1 },
-      ],
-      Hard: [
-        { id: 'bio-h-1', text: 'Which blood cells help in clotting?', options: o(['RBC', 'WBC', 'Platelets', 'Plasma']), correctIndex: 2 },
-        { id: 'bio-h-2', text: 'Enzymes in saliva start the digestion of:', options: o(['Proteins', 'Carbohydrates', 'Fats', 'Vitamins']), correctIndex: 1 },
-        { id: 'bio-h-3', text: 'The control center of the cell is:', options: o(['Cytoplasm', 'Nucleus', 'Mitochondria', 'Ribosome']), correctIndex: 1 },
-        { id: 'bio-h-4', text: 'Which of these is a respiratory pigment?', options: o(['Hemoglobin', 'Chlorophyll', 'Myosin', 'Insulin']), correctIndex: 0 },
-        { id: 'bio-h-5', text: 'Fertilization in plants occurs in:', options: o(['Stamen', 'Ovary', 'Pistil', 'Petal']), correctIndex: 1 },
-      ],
-    },
-  },
-
-  History: {
-    India: {
-      Easy: [
-        { id: 'his-e-1', text: 'Who was the first President of India?', options: o(['Jawaharlal Nehru', 'Rajendra Prasad', 'Sardar Patel', 'Indira Gandhi']), correctIndex: 1 },
-        { id: 'his-e-2', text: 'India got independence in:', options: o(['1945', '1947', '1950', '1930']), correctIndex: 1 },
-        { id: 'his-e-3', text: 'The “Iron Man of India” is:', options: o(['Mahatma Gandhi', 'Sardar Vallabhbhai Patel', 'Jawaharlal Nehru', 'Subhash Chandra Bose']), correctIndex: 1 },
-        { id: 'his-e-4', text: 'The Mughal emperor who built the Taj Mahal:', options: o(['Akbar', 'Shah Jahan', 'Aurangzeb', 'Babur']), correctIndex: 1 },
-        { id: 'his-e-5', text: 'Who started the Non-Cooperation Movement?', options: o(['Subhash Chandra Bose', 'Mahatma Gandhi', 'Bal Gangadhar Tilak', 'Lala Lajpat Rai']), correctIndex: 1 },
-      ],
-      Medium: [
-        { id: 'his-m-1', text: 'The Battle of Plassey took place in:', options: o(['1757', '1761', '1776', '1789']), correctIndex: 0 },
-        { id: 'his-m-2', text: 'Rani Lakshmibai ruled:', options: o(['Jaipur', 'Jhansi', 'Hyderabad', 'Mysore']), correctIndex: 1 },
-        { id: 'his-m-3', text: 'The first Governor-General of independent India was:', options: o(['Lord Mountbatten', 'C. Rajagopalachari', 'Rajendra Prasad', 'Lord Curzon']), correctIndex: 0 },
-        { id: 'his-m-4', text: '“Discovery of India” was written by:', options: o(['Mahatma Gandhi', 'Jawaharlal Nehru', 'Subhash Chandra Bose', 'Sardar Patel']), correctIndex: 1 },
-        { id: 'his-m-5', text: 'Revolt of 1857 is also called:', options: o(['Indian Civil War', 'First War of Independence', 'Sepoy Rebellion', 'Both b and c']), correctIndex: 3 },
-      ],
-      Hard: [
-        { id: 'his-h-1', text: 'Who founded the Indian National Congress?', options: o(['A.O. Hume', 'Bal Gangadhar Tilak', 'Lala Lajpat Rai', 'Dadabhai Naoroji']), correctIndex: 0 },
-        { id: 'his-h-2', text: 'Tipu Sultan was defeated by:', options: o(['British East India Company', 'Marathas', 'Mughals', 'French']), correctIndex: 0 },
-        { id: 'his-h-3', text: 'The Partition of Bengal happened in:', options: o(['1905', '1911', '1947', '1930']), correctIndex: 0 },
-        { id: 'his-h-4', text: 'Which act introduced separate electorates for Muslims?', options: o(['Indian Councils Act 1909', 'Government of India Act 1919', 'Government of India Act 1935', 'Regulating Act 1773']), correctIndex: 0 },
-        { id: 'his-h-5', text: 'The famous Dandi March was started in:', options: o(['1920', '1930', '1942', '1919']), correctIndex: 1 },
-      ],
-    },
-  },
-
-  Geography: {
-    India: {
-      Easy: [
-        { id: 'geo-e-1', text: 'The longest river in India is:', options: o(['Yamuna', 'Ganga', 'Godavari', 'Brahmaputra']), correctIndex: 1 },
-        { id: 'geo-e-2', text: 'The largest desert in India is:', options: o(['Thar', 'Sahara', 'Kalahari', 'Gobi']), correctIndex: 0 },
-        { id: 'geo-e-3', text: 'Mount Everest is located in:', options: o(['India', 'Nepal', 'China', 'Bhutan']), correctIndex: 1 },
-        { id: 'geo-e-4', text: 'The Tropic of Cancer passes through how many states of India?', options: o(['5', '8', '6', '7']), correctIndex: 1 },
-        { id: 'geo-e-5', text: 'The main source of groundwater is:', options: o(['Lakes', 'Rivers', 'Rainfall', 'Ocean']), correctIndex: 2 },
-      ],
-      Medium: [
-        { id: 'geo-m-1', text: 'India lies in which hemisphere?', options: o(['Northern & Western', 'Northern & Eastern', 'Southern & Eastern', 'Southern & Western']), correctIndex: 1 },
-        { id: 'geo-m-2', text: 'The river known as “Sorrow of Bihar” is:', options: o(['Ganga', 'Kosi', 'Brahmaputra', 'Yamuna']), correctIndex: 1 },
-        { id: 'geo-m-3', text: 'The largest plateau in India is:', options: o(['Malwa Plateau', 'Deccan Plateau', 'Chota Nagpur Plateau', 'Bundelkhand Plateau']), correctIndex: 1 },
-        { id: 'geo-m-4', text: 'Which state has the highest forest cover (area) in India?', options: o(['Madhya Pradesh', 'Arunachal Pradesh', 'Maharashtra', 'Odisha']), correctIndex: 0 },
-        { id: 'geo-m-5', text: 'The Andaman and Nicobar Islands are in which ocean?', options: o(['Atlantic', 'Indian', 'Pacific', 'Arctic']), correctIndex: 1 },
-      ],
-      Hard: [
-        { id: 'geo-h-1', text: 'Which river forms the delta known as Sundarbans?', options: o(['Ganga', 'Godavari', 'Mahanadi', 'Brahmaputra']), correctIndex: 0 },
-        { id: 'geo-h-2', text: 'Western Ghats are older than:', options: o(['Himalayas', 'Eastern Ghats', 'Aravallis', 'Nilgiris']), correctIndex: 0 },
-        { id: 'geo-h-3', text: 'India has how many states and union territories (2025)?', options: o(['28 & 8', '29 & 7', '30 & 8', '28 & 9']), correctIndex: 0 },
-        { id: 'geo-h-4', text: 'The highest peak in India (excluding Himalayas) is:', options: o(['Anamudi', 'Nanda Devi', 'Kangchenjunga', 'Saltoro']), correctIndex: 0 },
-        { id: 'geo-h-5', text: 'Rainfall is maximum in which region of India?', options: o(['Rajasthan', 'Western Ghats', 'Meghalaya', 'Gujarat']), correctIndex: 2 },
-      ],
-    },
-  },
-
-  Civics: {
-    India: {
-      Easy: [
-        { id: 'civ-e-1', text: 'The Constitution of India came into effect on:', options: o(['15 Aug 1947', '26 Jan 1950', '26 Nov 1949', '2 Oct 1950']), correctIndex: 1 },
-        { id: 'civ-e-2', text: 'The head of state in India is:', options: o(['Prime Minister', 'President', 'Chief Justice', 'Governor']), correctIndex: 1 },
-        { id: 'civ-e-3', text: 'Fundamental Rights are mentioned in which part of the Constitution?', options: o(['Part I', 'Part III', 'Part II', 'Part IV']), correctIndex: 1 },
-        { id: 'civ-e-4', text: 'India is a:', options: o(['Monarchy', 'Federal Republic', 'Dictatorship', 'Oligarchy']), correctIndex: 1 },
-        { id: 'civ-e-5', text: 'The National Human Rights Commission (NHRC) protects:', options: o(['Animals', 'Fundamental Rights', 'Environment', 'Trade Rights']), correctIndex: 1 },
-      ],
-      Medium: [
-        { id: 'civ-m-1', text: 'Who is the head of the state legislature?', options: o(['Governor', 'Chief Minister', 'Speaker', 'President']), correctIndex: 0 },
-        { id: 'civ-m-2', text: 'Panchayati Raj system was introduced by:', options: o(['42nd Amendment', '73rd Amendment', '86th Amendment', '44th Amendment']), correctIndex: 1 },
-        { id: 'civ-m-3', text: 'The tenure of the Lok Sabha is:', options: o(['4 years', '5 years', '6 years', '3 years']), correctIndex: 1 },
-        { id: 'civ-m-4', text: 'Right to Freedom of Religion is under which Article?', options: o(['19', '25', '32', '21']), correctIndex: 1 },
-        { id: 'civ-m-5', text: 'Which body settles disputes between states and the central government?', options: o(['Supreme Court', 'High Court', 'Parliament', 'President']), correctIndex: 0 },
-      ],
-      Hard: [
-        { id: 'civ-h-1', text: 'Who appoints the Chief Justice of India?', options: o(['Prime Minister', 'President', 'Parliament', 'Governor']), correctIndex: 1 },
-        { id: 'civ-h-2', text: 'Impeachment of the President requires:', options: o(['Simple majority', '2/3 majority in both Houses', '3/4 majority in both Houses', 'Approval of Supreme Court']), correctIndex: 1 },
-        { id: 'civ-h-3', text: 'India’s political system is based on:', options: o(['British Model', 'American Model', 'French Model', 'Russian Model']), correctIndex: 0 },
-        { id: 'civ-h-4', text: 'The Directive Principles of State Policy are:', options: o(['Justiciable', 'Non-justiciable', 'Fundamental Rights', 'Laws of Parliament']), correctIndex: 1 },
-        { id: 'civ-h-5', text: 'Fundamental Duties were added by which Amendment?', options: o(['42nd', '44th', '73rd', '86th']), correctIndex: 0 },
-      ],
-    },
-  },
-
-  Economics: {
-    General: {
-      Easy: [
-        { id: 'eco-e-1', text: 'The currency of India is:', options: o(['Dollar', 'Rupee', 'Yen', 'Pound']), correctIndex: 1 },
-        { id: 'eco-e-2', text: 'RBI stands for:', options: o(['Regional Bank of India', 'Reserve Bank of India', 'Rural Bank of India', 'Regulatory Bank of India']), correctIndex: 1 },
-        { id: 'eco-e-3', text: 'Inflation means:', options: o(['Prices falling', 'Prices rising', 'Stable prices', 'Economic growth']), correctIndex: 1 },
-        { id: 'eco-e-4', text: 'GST stands for:', options: o(['General Sales Tax', 'Goods and Services Tax', 'Government Service Tax', 'Global Standard Tax']), correctIndex: 1 },
-        { id: 'eco-e-5', text: 'Who prints the currency notes in India?', options: o(['RBI', 'Finance Ministry', 'Supreme Court', 'President']), correctIndex: 0 },
-      ],
-      Medium: [
-        { id: 'eco-m-1', text: 'Which is a renewable resource?', options: o(['Coal', 'Oil', 'Sunlight', 'Natural gas']), correctIndex: 2 },
-        { id: 'eco-m-2', text: 'Budget of India is presented by:', options: o(['Prime Minister', 'President', 'Finance Minister', 'Planning Commission']), correctIndex: 2 },
-        { id: 'eco-m-3', text: 'The financial year in India runs from:', options: o(['Jan–Dec', 'April–March', 'July–June', 'March–Feb']), correctIndex: 1 },
-        { id: 'eco-m-4', text: 'Deflation is:', options: o(['Fall in prices', 'Rise in prices', 'Tax increase', 'Tax decrease']), correctIndex: 0 },
-        { id: 'eco-m-5', text: 'Microeconomics studies:', options: o(['Whole economy', 'Individual units', 'Government policy', 'Inflation']), correctIndex: 1 },
-      ],
-      Hard: [
-        { id: 'eco-h-1', text: 'The largest source of revenue for the Government of India is:', options: o(['Tax revenue', 'Non-tax revenue', 'Loans', 'Grants']), correctIndex: 0 },
-        { id: 'eco-h-2', text: 'Fiscal deficit occurs when:', options: o(['Expenditure > Revenue', 'Revenue > Expenditure', 'Expenditure = Revenue', 'None']), correctIndex: 0 },
-        { id: 'eco-h-3', text: 'NITI Aayog replaced which institution?', options: o(['Planning Commission', 'Finance Commission', 'RBI', 'GST Council']), correctIndex: 0 },
-        { id: 'eco-h-4', text: 'The term “GDP” stands for:', options: o(['Gross Domestic Product', 'General Domestic Price', 'Gross Development Plan', 'Government Domestic Production']), correctIndex: 0 },
-        { id: 'eco-h-5', text: 'Cooperative banks mainly serve:', options: o(['Farmers', 'Corporates', 'Government', 'Traders']), correctIndex: 0 },
+        { id: 'g7-math-la-1', text: 'Sum of angles on a straight line is:', options: o(['90°', '120°', '150°', '180°']), correctIndex: 3 },
+        { id: 'g7-math-la-2', text: 'Vertically opposite angles are:', options: o(['Equal', 'Supplementary', 'Complementary', 'Unequal']), correctIndex: 0 },
+        { id: 'g7-math-la-3', text: 'Angles less than 90° are called:', options: o(['Reflex', 'Obtuse', 'Acute', 'Straight']), correctIndex: 2 },
+        { id: 'g7-math-la-4', text: 'If two lines never meet, they are:', options: o(['Intersecting', 'Parallel', 'Perpendicular', 'Skew']), correctIndex: 1 },
+        { id: 'g7-math-la-5', text: 'A right angle equals:', options: o(['30°', '45°', '60°', '90°']), correctIndex: 3 },
       ],
     },
   },
 };
 
+/* -------------------- CLASS 8 -------------------- */
+const QUIZ_BANK_8: QuizBank = {
+  Science: {
+    Electricity: {
+      Easy: [
+        { id: 'g8-sci-ele-1', text: 'SI unit of electric current is:', options: o(['Volt', 'Ohm', 'Ampere', 'Coulomb']), correctIndex: 2 },
+        { id: 'g8-sci-ele-2', text: 'Device used to measure current:', options: o(['Voltmeter', 'Ammeter', 'Ohmmeter', 'Barometer']), correctIndex: 1 },
+        { id: 'g8-sci-ele-3', text: 'A conductor allows:', options: o(['No charge flow', 'Easy charge flow', 'Only heat flow', 'Only light flow']), correctIndex: 1 },
+        { id: 'g8-sci-ele-4', text: 'Resistance is measured in:', options: o(['Ampere', 'Volt', 'Ohm', 'Watt']), correctIndex: 2 },
+        { id: 'g8-sci-ele-5', text: 'Electric fuse works on the principle of:', options: o(['Magnetism', 'Overheating/melting', 'Radiation', 'Cooling']), correctIndex: 1 },
+      ],
+    },
+    LifeProcessesInPlants: {
+      Easy: [
+        { id: 'g8-sci-pl-1', text: 'Process by which plants make food:', options: o(['Respiration', 'Photosynthesis', 'Transpiration', 'Digestion']), correctIndex: 1 },
+        { id: 'g8-sci-pl-2', text: 'Stomata are mainly for:', options: o(['Water absorption', 'Gas exchange', 'Transport of food', 'Seed formation']), correctIndex: 1 },
+        { id: 'g8-sci-pl-3', text: 'Xylem transports:', options: o(['Food', 'Water and minerals', 'Hormones', 'Oxygen only']), correctIndex: 1 },
+        { id: 'g8-sci-pl-4', text: 'The green pigment in leaves is:', options: o(['Chlorophyll', 'Haemoglobin', 'Melanin', 'Carotene']), correctIndex: 0 },
+        { id: 'g8-sci-pl-5', text: 'Transpiration is:', options: o(['Loss of water vapour from leaves', 'Absorption of CO₂', 'Production of oxygen', 'Breakdown of glucose']), correctIndex: 0 },
+      ],
+    },
+    LifeProcessesInAnimals: {
+      Easy: [
+        { id: 'g8-sci-an-1', text: 'The basic unit of life is the:', options: o(['Tissue', 'Organ', 'Cell', 'Organ system']), correctIndex: 2 },
+        { id: 'g8-sci-an-2', text: 'In humans, oxygen is carried mainly by:', options: o(['Plasma', 'RBCs (haemoglobin)', 'WBCs', 'Platelets']), correctIndex: 1 },
+        { id: 'g8-sci-an-3', text: 'Digestion begins in the:', options: o(['Stomach', 'Mouth', 'Small intestine', 'Large intestine']), correctIndex: 1 },
+        { id: 'g8-sci-an-4', text: 'Excretion in humans is mainly carried out by:', options: o(['Lungs', 'Skin', 'Kidneys', 'Liver']), correctIndex: 2 },
+        { id: 'g8-sci-an-5', text: 'The organ pumping blood throughout the body is the:', options: o(['Brain', 'Liver', 'Heart', 'Lungs']), correctIndex: 2 },
+      ],
+    },
+  },
+  SSC: {
+    Empires: {
+      Easy: [
+        { id: 'g8-ssc-emp-1', text: 'An empire usually means:', options: o(['Small local rule', 'Large territory under one ruler', 'Democracy', 'City-state only']), correctIndex: 1 },
+        { id: 'g8-ssc-emp-2', text: 'Capitals of empires were chosen for:', options: o(['Only beauty', 'Strategic, economic and political reasons', 'Random choice', 'Religious reasons only']), correctIndex: 1 },
+        { id: 'g8-ssc-emp-3', text: 'Imperial administration maintains:', options: o(['Roads and trade', 'Only wars', 'Only temples', 'Only farms']), correctIndex: 0 },
+        { id: 'g8-ssc-emp-4', text: 'Annexation expands an empire by:', options: o(['Diplomacy only', 'Adding territories', 'Reducing taxes only', 'Building schools']), correctIndex: 1 },
+        { id: 'g8-ssc-emp-5', text: 'Sources to study empires include:', options: o(['Coins and inscriptions', 'Fossils only', 'Satellites only', 'Fiction only']), correctIndex: 0 },
+      ],
+    },
+    GuptaEmpires: {
+      Easy: [
+        { id: 'g8-ssc-gupta-1', text: 'The Gupta period is often called the:', options: o(['Bronze Age', 'Golden Age of India', 'Stone Age', 'Industrial Age']), correctIndex: 1 },
+        { id: 'g8-ssc-gupta-2', text: 'A famous Gupta ruler:', options: o(['Chandragupta II (Vikramaditya)', 'Ashoka', 'Harsha', 'Alauddin Khilji']), correctIndex: 0 },
+        { id: 'g8-ssc-gupta-3', text: 'Famed university during Gupta period:', options: o(['Nalanda', 'Oxford', 'Takshashila in Europe', 'Beijing Univ.']), correctIndex: 0 },
+        { id: 'g8-ssc-gupta-4', text: 'Gupta coins are important because they:', options: o(['Give climate data', 'Give political & economic information', 'Are only decorative', 'Show latitude and longitude']), correctIndex: 1 },
+        { id: 'g8-ssc-gupta-5', text: 'Kalidasa lived during the:', options: o(['Mauryan period', 'Gupta period', 'Mughal period', 'Sultanate period']), correctIndex: 1 },
+      ],
+    },
+    UnderstandingMarkets: {
+      Easy: [
+        { id: 'g8-ssc-mkt-1', text: 'A weekly market is typically:', options: o(['Permanent shops', 'Temporary stalls on a fixed day', 'Online only', 'Factory outlet']), correctIndex: 1 },
+        { id: 'g8-ssc-mkt-2', text: 'Retailers buy from:', options: o(['Consumers', 'Wholesalers', 'Banks', 'Schools']), correctIndex: 1 },
+        { id: 'g8-ssc-mkt-3', text: 'MRP on a product is the:', options: o(['Minimum retail price', 'Maximum retail price', 'Manufacturing rate price', 'Market rate percentile']), correctIndex: 1 },
+        { id: 'g8-ssc-mkt-4', text: 'Fair trade encourages:', options: o(['Exploitation', 'Child labour', 'Ethical pricing to producers', 'Waste production']), correctIndex: 2 },
+        { id: 'g8-ssc-mkt-5', text: 'Online marketplaces connect:', options: o(['Only producers', 'Only consumers', 'Producers and consumers digitally', 'Only transporters']), correctIndex: 2 },
+      ],
+    },
+  },
+  Mathematics: {
+    ExpressionsUsingLetters: {
+      Easy: [
+        { id: 'g8-math-exp-1', text: 'In 3x + 5, x is a:', options: o(['Constant', 'Variable', 'Operator', 'Exponent']), correctIndex: 1 },
+        { id: 'g8-math-exp-2', text: 'Simplify: 2x + 3x =', options: o(['5', '6x', '5x', 'x^5']), correctIndex: 2 },
+        { id: 'g8-math-exp-3', text: 'Coefficient of y in 7y is:', options: o(['1', '7', 'y', '0']), correctIndex: 1 },
+        { id: 'g8-math-exp-4', text: 'Value of 4a when a = 3 is:', options: o(['7', '12', '1/12', '43']), correctIndex: 1 },
+        { id: 'g8-math-exp-5', text: 'Like terms are those with the same:', options: o(['Numerical value', 'Variables and powers', 'Signs only', 'Exponents only']), correctIndex: 1 },
+      ],
+    },
+    Fractions: {
+      Easy: [
+        { id: 'g8-math-fr-1', text: '2/3 + 1/6 =', options: o(['1/2', '5/6', '2/9', '3/6']), correctIndex: 1 },
+        { id: 'g8-math-fr-2', text: '3/4 of 20 is:', options: o(['5', '10', '15', '20']), correctIndex: 2 },
+        { id: 'g8-math-fr-3', text: 'A fraction with numerator smaller than denominator is:', options: o(['Improper', 'Mixed', 'Proper', 'Whole']), correctIndex: 2 },
+        { id: 'g8-math-fr-4', text: '0.25 equals:', options: o(['1/2', '1/3', '1/4', '1/5']), correctIndex: 2 },
+        { id: 'g8-math-fr-5', text: 'Reciprocal of 5/8 is:', options: o(['5/8', '8/5', '−5/8', '5/−8']), correctIndex: 1 },
+      ],
+    },
+    NumberPlay: {
+      Easy: [
+        { id: 'g8-math-np-1', text: 'A prime number has exactly:', options: o(['1 factor', '2 factors', '3 factors', '4 factors']), correctIndex: 1 },
+        { id: 'g8-math-np-2', text: 'LCM of 6 and 8 is:', options: o(['12', '16', '24', '48']), correctIndex: 2 },
+        { id: 'g8-math-np-3', text: 'HCF of 12 and 18 is:', options: o(['2', '3', '4', '6']), correctIndex: 3 },
+        { id: 'g8-math-np-4', text: 'A multiple of 9 is divisible by the sum of its digits being:', options: o(['9', '8', '7', '6']), correctIndex: 0 },
+        { id: 'g8-math-np-5', text: 'Even numbers are divisible by:', options: o(['3', '4', '2', '5']), correctIndex: 2 },
+      ],
+    },
+  },
+};
+
+/* -------------------- CLASS 9 -------------------- */
+const QUIZ_BANK_9: QuizBank = {
+  Science: {
+    Motion: {
+      Easy: [
+        { id: 'g9-sci-mot-1', text: 'The SI unit of velocity is:', options: o(['m/s²', 'm/s', 'km', 'm']), correctIndex: 1 },
+        { id: 'g9-sci-mot-2', text: 'Area under a velocity–time graph represents:', options: o(['Acceleration', 'Displacement', 'Jerk', 'Power']), correctIndex: 1 },
+        { id: 'g9-sci-mot-3', text: 'For uniform motion, acceleration is:', options: o(['Zero', 'Constant non-zero', 'Increasing', 'Decreasing']), correctIndex: 0 },
+        { id: 'g9-sci-mot-4', text: 'For maximum range on level ground, angle of projection is:', options: o(['30°', '45°', '60°', '90°']), correctIndex: 1 },
+        { id: 'g9-sci-mot-5', text: 'The path of a projectile (neglecting air resistance) is a:', options: o(['Circle', 'Straight line', 'Parabola', 'Ellipse']), correctIndex: 2 },
+      ],
+    },
+    'Is Matter Around Us Pure': {
+      Easy: [
+        { id: 'g9-sci-pure-1', text: 'A solution is a _____ mixture.', options: o(['Heterogeneous', 'Homogeneous', 'Colloidal', 'Suspension']), correctIndex: 1 },
+        { id: 'g9-sci-pure-2', text: 'The Tyndall effect is shown by:', options: o(['True solutions', 'Colloids', 'All mixtures', 'Pure substances']), correctIndex: 1 },
+        { id: 'g9-sci-pure-3', text: 'Which method separates an insoluble solid from a liquid?', options: o(['Filtration', 'Evaporation', 'Distillation', 'Chromatography']), correctIndex: 0 },
+        { id: 'g9-sci-pure-4', text: 'Distillation is best suited to separate:', options: o(['Sand and water', 'Oil and water', 'Alcohol and water (miscible liquids)', 'Iron filings and sulphur']), correctIndex: 2 },
+        { id: 'g9-sci-pure-5', text: 'In a solution, the component present in larger amount is the:', options: o(['Solute', 'Solvent', 'Residue', 'Precipitate']), correctIndex: 1 },
+      ],
+    },
+    'Cell Fundamental Unit of Life': {
+      Easy: [
+        { id: 'g9-sci-cell-1', text: 'The “powerhouse” of the cell is:', options: o(['Nucleus', 'Ribosome', 'Mitochondria', 'Chloroplast']), correctIndex: 2 },
+        { id: 'g9-sci-cell-2', text: 'Cell wall is present in:', options: o(['Animal cells only', 'Plant cells only', 'Both plant and animal cells', 'Neither']), correctIndex: 1 },
+        { id: 'g9-sci-cell-3', text: 'Ribosomes are the site of:', options: o(['Protein synthesis', 'Lipid synthesis', 'DNA replication', 'Photosynthesis']), correctIndex: 0 },
+        { id: 'g9-sci-cell-4', text: 'Osmosis is:', options: o(['Diffusion of any gas', 'Movement of solute through a membrane', 'Movement of water through a semipermeable membrane', 'Bulk flow of liquid due to pressure']), correctIndex: 2 },
+        { id: 'g9-sci-cell-5', text: 'Which organelle controls cell activities?', options: o(['Nucleus', 'Golgi apparatus', 'Lysosome', 'Vacuole']), correctIndex: 0 },
+      ],
+    },
+  },
+  SSC: {
+    'French Revolution': {
+      Easy: [
+        { id: 'g9-ssc-fr-1', text: 'The Bastille was stormed on:', options: o(['14 July 1789', '26 January 1789', '4 July 1789', '5 May 1789']), correctIndex: 0 },
+        { id: 'g9-ssc-fr-2', text: 'Before the Revolution, who paid most taxes?', options: o(['Clergy', 'Nobility', 'Commoners (Third Estate)', 'King']), correctIndex: 2 },
+        { id: 'g9-ssc-fr-3', text: 'Leader associated with the Reign of Terror:', options: o(['Lafayette', 'Robespierre', 'Danton', 'Napoleon']), correctIndex: 1 },
+        { id: 'g9-ssc-fr-4', text: 'The guillotine was used for:', options: o(['Measuring grain', 'Printing newspapers', 'Public executions', 'Minting coins']), correctIndex: 2 },
+        { id: 'g9-ssc-fr-5', text: '“Declaration of the Rights of Man and Citizen” was adopted in:', options: o(['1787', '1788', '1789', '1791']), correctIndex: 2 },
+      ],
+    },
+    'India Size and Location': {
+      Easy: [
+        { id: 'g9-ssc-size-1', text: 'India lies in which hemispheres?', options: o(['Northern & Western', 'Northern & Eastern', 'Southern & Eastern', 'Southern & Western']), correctIndex: 1 },
+        { id: 'g9-ssc-size-2', text: 'The Standard Meridian of India is:', options: o(['82°30′ E', '75° E', '90° E', '70° E']), correctIndex: 0 },
+        { id: 'g9-ssc-size-3', text: 'Which latitude roughly divides India into two equal parts?', options: o(['Equator', 'Tropic of Cancer', 'Tropic of Capricorn', 'Arctic Circle']), correctIndex: 1 },
+        { id: 'g9-ssc-size-4', text: 'India is bounded by which ocean to the south?', options: o(['Pacific Ocean', 'Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean']), correctIndex: 2 },
+        { id: 'g9-ssc-size-5', text: 'Sri Lanka is separated from India by the:', options: o(['Palk Strait and Gulf of Mannar', 'Malacca Strait', 'Hormuz Strait', 'Sunda Strait']), correctIndex: 0 },
+      ],
+    },
+    'What is Democracy Why Democracy': {
+      Easy: [
+        { id: 'g9-ssc-dem-1', text: 'A key feature of democracy is:', options: o(['Hereditary rulers', 'Free and fair elections', 'No rule of law', 'No rights']), correctIndex: 1 },
+        { id: 'g9-ssc-dem-2', text: 'In a democracy, final decision-making power rests with:', options: o(['Army', 'Hereditary monarch', 'Elected representatives', 'Religious heads']), correctIndex: 2 },
+        { id: 'g9-ssc-dem-3', text: 'Universal adult franchise means:', options: o(['Only property owners vote', 'All adult citizens can vote', 'Only govt employees vote', 'Only men vote']), correctIndex: 1 },
+        { id: 'g9-ssc-dem-4', text: 'A merit of democracy is that it:', options: o(['Ignores public opinion', 'Improves quality of decisions with debate', 'Encourages dictatorship', 'Prevents accountability']), correctIndex: 1 },
+        { id: 'g9-ssc-dem-5', text: '“Government of the people, by the people, for the people” defines:', options: o(['Autocracy', 'Monarchy', 'Democracy', 'Oligarchy']), correctIndex: 2 },
+      ],
+    },
+    'The Story of Village Palampur': {
+      Easy: [
+        { id: 'g9-ssc-pal-1', text: 'Main production activity in Palampur is:', options: o(['Farming', 'Mining', 'Shipbuilding', 'Tourism']), correctIndex: 0 },
+        { id: 'g9-ssc-pal-2', text: 'Which is an example of fixed capital?', options: o(['Seeds', 'Fertilisers', 'Tractor', 'Wages']), correctIndex: 2 },
+        { id: 'g9-ssc-pal-3', text: 'HYV seeds and modern inputs led to:', options: o(['Lower yields', 'Green Revolution', 'Less irrigation', 'Fewer crops per year']), correctIndex: 1 },
+        { id: 'g9-ssc-pal-4', text: 'Human capital refers to:', options: o(['Tools and machines', 'Education, health and skills of people', 'Buildings', 'Raw materials']), correctIndex: 1 },
+        { id: 'g9-ssc-pal-5', text: 'In Palampur, increased irrigation in the 1960s was mainly due to:', options: o(['Canals only', 'Electric tube-wells', 'Rainwater harvesting', 'Dams on rivers']), correctIndex: 1 },
+      ],
+    },
+  },
+  Mathematics: {
+    'Number System': {
+      Easy: [
+        { id: 'g9-math-ns-1', text: 'Which of the following is an irrational number?', options: o(['√2', '1/3', '0.125', '−5']), correctIndex: 0 },
+        { id: 'g9-math-ns-2', text: 'The decimal expansion of 1/8 is:', options: o(['0.125 (terminating)', '0.13 (non-terminating)', '0.333… (non-terminating)', '1.8 (terminating)']), correctIndex: 0 },
+        { id: 'g9-math-ns-3', text: 'Which statement is true?', options: o(['Every rational number is an integer', 'Every integer is a rational number', 'Every irrational number is rational', 'All real numbers are natural numbers']), correctIndex: 1 },
+        { id: 'g9-math-ns-4', text: 'Express 0.375 as a fraction in lowest terms:', options: o(['3/5', '3/8', '5/8', '7/8']), correctIndex: 1 },
+        { id: 'g9-math-ns-5', text: 'A non-terminating, non-repeating decimal represents:', options: o(['A rational number', 'A natural number', 'An irrational number', 'An integer']), correctIndex: 2 },
+      ],
+    },
+    Polynomials: {
+      Easy: [
+        { id: 'g9-math-poly-1', text: 'The degree of the polynomial 3x² − 5x + 7 is:', options: o(['0', '1', '2', '3']), correctIndex: 2 },
+        { id: 'g9-math-poly-2', text: 'Zeros of x² − 9 are:', options: o(['3 and 9', '−3 and 3', '0 and 9', '−9 and 9']), correctIndex: 1 },
+        { id: 'g9-math-poly-3', text: 'A linear polynomial has degree:', options: o(['0', '1', '2', '3']), correctIndex: 1 },
+        { id: 'g9-math-poly-4', text: 'Factorise: x² + 7x + 12', options: o(['(x+2)(x+6)', '(x+3)(x+4)', '(x−3)(x−4)', '(x−2)(x−6)']), correctIndex: 1 },
+        { id: 'g9-math-poly-5', text: 'A non-zero constant polynomial has how many zeros?', options: o(['0', '1', '2', 'Infinitely many']), correctIndex: 0 },
+      ],
+    },
+    'Coordinate Geometry': {
+      Easy: [
+        { id: 'g9-math-cg-1', text: 'Coordinates of the origin are:', options: o(['(0, 1)', '(1, 0)', '(0, 0)', '(1, 1)']), correctIndex: 2 },
+        { id: 'g9-math-cg-2', text: 'Point (−3, 4) lies in which quadrant?', options: o(['I', 'II', 'III', 'IV']), correctIndex: 1 },
+        { id: 'g9-math-cg-3', text: 'Distance between (0, 0) and (3, 4) is:', options: o(['4', '5', '6', '7']), correctIndex: 1 },
+        { id: 'g9-math-cg-4', text: 'The equation of the x-axis is:', options: o(['x = 0', 'y = 0', 'x = y', 'x + y = 0']), correctIndex: 1 },
+        { id: 'g9-math-cg-5', text: 'A point on the y-axis has:', options: o(['x = 0', 'y = 0', 'x = y', 'x > 0']), correctIndex: 0 },
+      ],
+    },
+  },
+};
+
+/* -------------------- MASTER MAP -------------------- */
+const QUIZ_BANK_BY_CLASS: Record<Grade, QuizBank> = {
+  '7': QUIZ_BANK_7,
+  '8': QUIZ_BANK_8,
+  '9': QUIZ_BANK_9,
+};
+
 /** --------------------------
- *  NORMALIZE SELECTIONS (unchanged)
+ *  NORMALIZATION: Subject/Chapter per class
  *  -------------------------- */
-function normalizeSelection(rawSubject: string, rawChapter: string) {
-  const subject = (rawSubject || '').trim();
-  const chapter = (rawChapter || '').trim();
 
-  if (subject === 'Science') {
-    if (/^motion$/i.test(chapter)) return { subject: 'Physics', chapter: 'Motion' };
-    if (/matter/i.test(chapter)) return { subject: 'Chemistry', chapter: 'General' };
-    if (/cell/i.test(chapter)) return { subject: 'Biology', chapter: 'General' };
-  }
-  if (subject === 'Maths') return { subject: 'Mathematics', chapter: 'General' };
+function normalizeSelection(rawSubject: string, rawChapter: string, grade: Grade) {
+  // subject normalization
+  let subject = (rawSubject || '').trim();
+  if (/^maths?$/i.test(subject)) subject = 'Mathematics';
+  if (/^ss(c)?$/i.test(subject)) subject = 'SSC';
+  if (/^sci(ence)?$/i.test(subject)) subject = 'Science';
 
-  if (subject === 'SSC') {
-    if (/french.*revolution/i.test(chapter)) return { subject: 'History', chapter: 'India' };
-    if (/india.*size.*location/i.test(chapter)) return { subject: 'Geography', chapter: 'India' };
-    if (/democracy/i.test(chapter)) return { subject: 'Civics', chapter: 'India' };
-    if (/palampur/i.test(chapter)) return { subject: 'Economics', chapter: 'General' };
+  const bank = QUIZ_BANK_BY_CLASS[grade];
+  if (!bank[subject]) {
+    // If unknown subject, pick a default available one for this grade
+    subject = Object.keys(bank)[0];
   }
 
-  const passthrough = ['Physics', 'Mathematics', 'Chemistry', 'Biology', 'History', 'Geography', 'Civics', 'Economics'];
-  if (passthrough.includes(subject)) {
-    const subjectObj = QUIZ_BANK[subject];
-    const firstChapter = subjectObj ? Object.keys(subjectObj)[0] : 'General';
-    const chosenChapter = chapter && subjectObj?.[chapter] ? chapter : firstChapter;
-    return { subject, chapter: chosenChapter };
+  const chapters = Object.keys(bank[subject]);
+  const wanted = (rawChapter || '').toLowerCase();
+
+  // heuristic matches across spellings/spaces
+  function pickChapter(): string {
+    if (grade === '7') {
+      if (/magnet/i.test(wanted)) return 'Magnets';
+      if (/separat|seperat/i.test(wanted)) return 'MethodsOfSeperation';
+      if (/mindful|eating/i.test(wanted)) return 'MindfulEating';
+      if (subject === 'SSC') {
+        if (/ocean|continent/i.test(wanted)) return 'OceansAndContinents';
+        if (/timeline|time\s*line/i.test(wanted)) return 'Timeline';
+        if (/family/i.test(wanted)) return 'Family';
+      }
+      if (subject === 'Mathematics') {
+        if (/data.*handling/i.test(wanted)) return 'DataHandling';
+        if (/symmetry/i.test(wanted)) return 'Symmetry';
+        if (/lines?.*angles?/i.test(wanted)) return 'LinesAndAngles';
+      }
+    }
+
+    if (grade === '8') {
+      if (subject === 'Science') {
+        if (/electric/i.test(wanted)) return 'Electricity';
+        if (/life.*plant/i.test(wanted)) return 'LifeProcessesInPlants';
+        if (/life.*animal/i.test(wanted)) return 'LifeProcessesInAnimals';
+      }
+      if (subject === 'SSC') {
+        if (/gupta/i.test(wanted)) return 'GuptaEmpires';
+        if (/empire/i.test(wanted)) return 'Empires';
+        if (/market/i.test(wanted)) return 'UnderstandingMarkets';
+      }
+      if (subject === 'Mathematics') {
+        if (/expression.*letter/i.test(wanted)) return 'ExpressionsUsingLetters';
+        if (/fraction/i.test(wanted)) return 'Fractions';
+        if (/number.*play/i.test(wanted)) return 'NumberPlay';
+      }
+    }
+
+    if (grade === '9') {
+      if (subject === 'Science') {
+        if (/motion/i.test(wanted)) return 'Motion';
+        if (/matter.*pure/i.test(wanted)) return 'Is Matter Around Us Pure';
+        if (/fundamental.*unit.*life|cell/i.test(wanted)) return 'Cell Fundamental Unit of Life';
+      }
+      if (subject === 'SSC') {
+        if (/french.*revolution/i.test(wanted)) return 'French Revolution';
+        if (/size.*location/i.test(wanted)) return 'India Size and Location';
+        if (/what.*democracy|why.*democracy/i.test(wanted)) return 'What is Democracy Why Democracy';
+        if (/palampur/i.test(wanted)) return 'The Story of Village Palampur';
+      }
+      if (subject === 'Mathematics') {
+        if (/number.*system/i.test(wanted)) return 'Number System';
+        if (/polynomial/i.test(wanted)) return 'Polynomials';
+        if (/coordinate.*geometry/i.test(wanted)) return 'Coordinate Geometry';
+      }
+    }
+
+    // exact (case-insensitive) fallback
+    const found = chapters.find((c) => c.toLowerCase() === wanted);
+    return found || chapters[0];
   }
 
-  return { subject: 'Physics', chapter: 'Motion' };
+  const chapter = pickChapter();
+  return { subject, chapter };
 }
 
 /** --------------------------
- *  QUIZ PAGE (save on Finish)
+ *  QUIZ PAGE
  *  -------------------------- */
 export default function QuizPage() {
   const router = useRouter();
@@ -285,35 +464,87 @@ export default function QuizPage() {
   const rawChapter = params.get('chapter') || '';
   const levelParam = (params.get('level') as Level) || 'Easy';
 
-  const { subject, chapter } = normalizeSelection(rawSubject, rawChapter);
+  // **Language chosen on Lesson page**
+  const chosenLangLabel = params.get('language') || ''; // e.g., "Hindi", "Marathi"...
+  const selectedLang = normalizeLang(chosenLangLabel || user?.language); // normalize to code (hi, mr, bn, ta, en, pa, as)
+
+  // Resolve grade from URL (if passed) or user profile (className/class/grade/standard/studentClass)
+  const userGrade: Grade = resolveUserGrade(user, params);
+
+  const { subject, chapter } = normalizeSelection(rawSubject, rawChapter, userGrade);
   const displayedChapter = rawChapter || chapter;
   const level: Level = levelParam;
 
-  const preferredLang = normalizeLang(user?.language);
-console.log('user.language =', user?.language);
-console.log('preferredLang =', preferredLang);
+  /** ---- Optional static i18n bank (currently only for Hindi) ---- */
+  const [i18nBank, setI18nBank] = useState<I18nBank | null>(null);
+  const [i18nError, setI18nError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function maybeLoadI18n() {
+      setI18nError(null);
+      setI18nBank(null);
+
+      // Only load a static file for Hindi right now. On-the-fly is used for other languages.
+      if (selectedLang !== 'hi') return;
+
+      const filename = 'quiz_i18n_hi.json';
+      const url = `/quiz/${filename}`; // served from public/quiz/filename
+
+      try {
+        const res = await fetch(url, { cache: 'force-cache' });
+        if (!res.ok) throw new Error(`Failed to load ${url} (${res.status})`);
+        const json = (await res.json()) as I18nBank;
+        if (!cancelled) setI18nBank(json);
+      } catch (e: any) {
+        if (!cancelled) {
+          setI18nError(e?.message || 'Unable to load Hindi quiz bank.');
+          setI18nBank(null);
+        }
+      }
+    }
+
+    maybeLoadI18n();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLang]);
+
+  /** Choose base questions from either i18nBank (if available) or English defaults */
   const baseQuestions = useMemo<Question[]>(() => {
-    const subj = QUIZ_BANK[subject];
+    const i18nForGrade = i18nBank?.[userGrade];
+    const sourceBank = i18nForGrade ?? QUIZ_BANK_BY_CLASS[userGrade];
+
+    const subj = sourceBank[subject];
     const chap = subj?.[chapter];
     const arr = chap?.[level] || [];
     if (arr.length === 0 && chap) {
-      return chap.Easy?.length ? chap.Easy! : chap.Medium?.length ? chap.Medium! : chap.Hard ?? [];
+      return chap.Easy?.length ? chap.Easy! : [];
     }
     return arr;
-  }, [subject, chapter, level]);
+  }, [subject, chapter, level, userGrade, i18nBank]);
 
   const [questions, setQuestions] = useState<Question[]>(baseQuestions);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await preloadTranslationCache(preferredLang);
-      const q = await translateQuestionsOnTheFly(baseQuestions, preferredLang);
+      // If we have a static i18n bank (e.g., Hindi JSON), use it directly
+      if (i18nBank) {
+        if (!cancelled) setQuestions(baseQuestions);
+        return;
+      }
+
+      // Otherwise translate from English defaults into the **selected language**
+      await preloadTranslationCache(selectedLang);
+      const q = await translateQuestionsOnTheFly(baseQuestions, selectedLang);
       if (!cancelled) setQuestions(q);
     })();
-    return () => { cancelled = true; };
-  }, [baseQuestions, preferredLang]);
+    return () => {
+      cancelled = true;
+    };
+  }, [baseQuestions, selectedLang, i18nBank]);
 
   // UI state
   const [started, setStarted] = useState(false);
@@ -343,29 +574,21 @@ console.log('preferredLang =', preferredLang);
   async function handleFinish() {
     setFinished(true);
 
-    // "Saving" UX kept identical, but no DB call (no Firebase)
+    // Save to Firestore (fields: studentID, class, subject, chapter, score, timestamp)
     if (!user?.uid || questions.length === 0) return;
     try {
       setSaving(true);
       setSaveError(null);
 
-      // Create a local JSON file with studentId, subject, chapter, score, timestamp
-      const result = {
-        studentId: user.uid,
+      await addDoc(collection(db, 'quizAttempts'), {
+        studentID: user.uid,
+        class: userGrade,
         subject,
         chapter: displayedChapter,
         score,
-        timestamp: new Date().toISOString(),
-      };
-      const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quiz_score_${user.uid}_${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+        language: selectedLang, // (optional) keep a record of the quiz language
+        timestamp: serverTimestamp(),
+      });
     } catch (e: any) {
       setSaveError(e?.message || 'Failed to save your attempt.');
     } finally {
@@ -422,6 +645,11 @@ console.log('preferredLang =', preferredLang);
                 <span className="font-semibold">{displayedChapter}</span> • Level{' '}
                 <span className="font-semibold">{level}</span>
               </p>
+              {i18nError && (
+                <p className="text-xs text-rose-700 mt-1">
+                  {i18nError}
+                </p>
+              )}
             </div>
             <div className="hidden md:flex items-center gap-2 text-[#6B5BBE]">
               <BookText className="h-6 w-6" />

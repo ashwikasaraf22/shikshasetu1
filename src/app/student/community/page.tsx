@@ -16,43 +16,44 @@ function CommunityHome() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const tabs = [
-    {
-      title: 'Join a Workshop',
-      desc: 'Attend live sessions and learn from experienced teachers.',
-      icon: GraduationCap,
-      color: 'from-[#CFE7FF] to-[#E5F0FF]', // light sky → powder
-      link: '/student/community/workshop',
-    },
-    {
-      title: 'Take a Test',
-      desc: 'Participate in teacher-led assessments and track your progress.',
-      icon: PenTool,
-      color: 'from-[#D9F4EC] to-[#E9FFF8]', // mint → seafoam
-      link: '/student/community/schedule_workshop',
-    },
-    {
-      title: 'View Videos',
-      desc: 'Watch engaging lessons and visual explanations.',
-      icon: Video,
-      color: 'from-[#FFE3ED] to-[#FFF1F6]', // pink → blush
-      link: '/community/videos',
-    },
-    {
-      title: 'Share Something',
-      desc: 'Post your ideas, projects, or thoughts with others.',
-      icon: Send,
-      color: 'from-[#FDE7C9] to-[#FFF3E2]', // peach → cream
-      link: '/student/community/share',
-    },
-    {
-      title: 'See What Others Shared',
-      desc: 'Explore posts shared by students and teachers.',
-      icon: Users,
-      color: 'from-[#E5DBFF] to-[#F0E9FF]', // lavender → lilac
-      link: '/student/community/feed',
-    },
-  ];
+//   const tabs = [
+//     {
+//       title: 'Join a Workshop',
+//       desc: 'Attend live sessions and learn from experienced teachers.',
+//       icon: GraduationCap,
+//       color: 'from-[#CFE7FF] to-[#E5F0FF]', // light sky → powder
+//       link: '/student/community/workshop',
+//     },
+//     {
+//       title: 'Take a Test',
+//       desc: 'Participate in teacher-led assessments and track your progress.',
+//       icon: PenTool,
+//       color: 'from-[#D9F4EC] to-[#E9FFF8]', // mint → seafoam
+//       link: '/student/community/schedule_workshop',
+//     },
+//     {
+//      title: 'View Videos',
+//       desc: 'Watch engaging lessons and visual explanations.',
+//       icon: Video,
+//       color: 'from-[#FFE3ED] to-[#FFF1F6]',
+// -     link: '/community/videos',
+// +     link: '/student/community/videos',
+//     },
+//     {
+//       title: 'Share Something',
+//       desc: 'Post your ideas, projects, or thoughts with others.',
+//       icon: Send,
+//       color: 'from-[#FDE7C9] to-[#FFF3E2]', // peach → cream
+//       link: '/student/community/share',
+//     },
+//     {
+//       title: 'See What Others Shared',
+//       desc: 'Explore posts shared by students and teachers.',
+//       icon: Users,
+//       color: 'from-[#E5DBFF] to-[#F0E9FF]', // lavender → lilac
+//       link: '/student/community/feed',
+//     },
+//   ];
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-[#ECE7FF] via-[#F6F3FF] to-[#E3F1FF] text-gray-800 overflow-hidden">
@@ -96,7 +97,7 @@ function CommunityHome() {
           >
             Back
           </Button>
-          <h1 className="text-center text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm">
+          <h1 className="text-center text-4xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm">
             Community Hub
           </h1>
         </div>
@@ -124,10 +125,11 @@ function CommunityHome() {
           {tabs.map((tab, idx) => {
             const Icon = tab.icon;
             return (
-              <div>
+              <div
                 key={idx}
-                onClick= router.push(tab.link)
-                className=cursor-pointer relative overflow-hidden rounded-3xl bg-gradient-to-br ${tab.color} p-8 shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1.5 hover:scale-[1.02] backdrop-blur-md
+                onClick={() => router.push(tab.link)}
+                className={`cursor-pointer relative overflow-hidden rounded-3xl bg-gradient-to-br ${tab.color} p-8 shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1.5 hover:scale-[1.02] backdrop-blur-md`}
+              >
                 {/* Per-card doodle */}
                 <svg
                   className="pointer-events-none absolute -top-5 -right-5 w-24 h-24 opacity-40"

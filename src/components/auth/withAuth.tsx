@@ -1,9 +1,16 @@
 'use client';
-
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 
+/**
+ * Role-based route guard HOC
+ * Wrap any page with `withAuth(Component, ['role1', 'role2'])`
+ * to protect it based on user role.
+ *
+ * Example:
+ *   export default withAuth(StudentDashboard, ['student']);
+ */
 export default function withAuth<P>(
   Component: React.ComponentType<P>,
   allowedRoles?: Array<'student' | 'teacher' | 'parent'>
@@ -15,23 +22,29 @@ export default function withAuth<P>(
     useEffect(() => {
       if (!loading) {
         if (!user) {
-          // Preserve destination so we can come back after login
-          router.replace('/login?redirect=' + encodeURIComponent(window.location.pathname));
+          // Not logged in → redirect to login and remember path
+          const redirectUrl = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+          router.replace(redirectUrl);
           return;
         }
+
+        // User logged in but not allowed for this page
         if (allowedRoles && !allowedRoles.includes(user.role)) {
-          // Route by user role if they’re not allowed here
           if (user.role === 'parent') router.replace('/parent');
           else if (user.role === 'teacher') router.replace('/teacher');
-          else router.replace('/student');
+          else if (user.role === 'student') router.replace('/student');
+          else router.replace('/login');
         }
       }
     }, [loading, user, allowedRoles, router]);
 
-    if (loading) return null;  // or a loading spinner
-    if (!user) return null;    // redirecting
-    if (allowedRoles && !allowedRoles.includes(user.role)) return null; // redirecting
+    // While auth is loading or redirecting, render nothing
+    if (loading || !user) return null;
 
+    // If user role not allowed, don’t render component (redirecting)
+    if (allowedRoles && !allowedRoles.includes(user.role)) return null;
+
+    // Otherwise render the wrapped component
     return <Component {...props} />;
   };
 }

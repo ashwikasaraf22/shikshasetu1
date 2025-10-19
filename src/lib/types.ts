@@ -16,8 +16,8 @@ export type SubjectiveQuestion = {
 
 // For Flash Card Generation
 export type FlashCard = {
-    front: string;
-    back: string;
+  front: string;
+  back: string;
 }
 
 // For Test Evaluation
@@ -51,8 +51,14 @@ export type UserProfile = {
   uid: string;
   email: string;
   role: UserRole;
-  classIds?: string[]; // Only for students
-  studentIds?: string[]; // Only for parents
+
+  // Existing fields
+  classIds?: string[];   // Only for students
+  studentIds?: string[]; // Only for parents (legacy array approach if you keep it)
+
+  // 🔹 Added for parent dashboard & lookups
+  displayName?: string;  // Student/teacher/parent display name
+  className?: string;    // e.g., "Class 9 - B" (handy to show under the child's name)
 };
 
 export type Class = {
@@ -64,7 +70,7 @@ export type Class = {
 };
 
 export type Test = {
-  id:string;
+  id: string;
   name: string;
   classId: string | null; // Can be null for drafts
   questions: (MCQQuestion | SubjectiveQuestion)[];
@@ -95,33 +101,33 @@ export type VisualAid = {
 // ---- New Types for Chat and Community ----
 
 export type Chat = {
-    id: string;
-    participants: string[]; // array of user UIDs
-    lastMessage: {
-        text: string;
-        timestamp: Timestamp;
-        senderId: string;
-    } | null;
-    participantProfiles: UserProfile[];
+  id: string;
+  participants: string[]; // array of user UIDs
+  lastMessage: {
+    text: string;
+    timestamp: Timestamp;
+    senderId: string;
+  } | null;
+  participantProfiles: UserProfile[];
 }
 
 export type ChatMessage = {
-    id: string;
-    chatId: string;
-    senderId: string;
-    text: string;
-    timestamp: Timestamp;
+  id: string;
+  chatId: string;
+  senderId: string;
+  text: string;
+  timestamp: Timestamp;
 }
 
 export type CommunityPost = {
-    id: string;
-    title: string;
-    content: string;
-    mediaUrl?: string; // URL from Cloudinary
-    mediaType?: 'image' | 'video' | 'document';
-    createdBy: string; // user's uid
-    createdAt: Timestamp;
-    authorProfile?: UserProfile;
+  id: string;
+  title: string;
+  content: string;
+  mediaUrl?: string; // URL from Cloudinary
+  mediaType?: 'image' | 'video' | 'document';
+  createdBy: string; // user's uid
+  createdAt: Timestamp;
+  authorProfile?: UserProfile;
 }
 
 export type Call = {
@@ -134,3 +140,9 @@ export type Call = {
   participants: string[];
   callerProfile?: UserProfile;
 }
+
+// ---- 🔹 New: Parent–Child mapping doc (parents/{parentUid}/children/{childUid}) ----
+export type ParentChildLink = {
+  childUid: string;
+  linkedAt: number; // Date.now() at link time
+};

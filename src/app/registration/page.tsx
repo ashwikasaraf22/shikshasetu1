@@ -54,7 +54,7 @@ export default function ShikshaSetuRegistration() {
       const userRef = doc(db, "users", cred.user.uid);
 
       const base = {
-        role: formData.role.toLowerCase(), // "student" | "teacher" | "parent"
+        role: formData.role.toLowerCase(), // "student" | "teacher" | "Parent"
         email: formData.email,
         language: formData.language,
         createdAt: serverTimestamp(),
@@ -73,10 +73,10 @@ export default function ShikshaSetuRegistration() {
           className: formData.className,
           subject: formData.subject,
         });
-      } else if (formData.role === "parent") {
+      } else if (formData.role === "Parent") {
         await setDoc(userRef, {
           ...base,
-          name: formData.name,          // parent's name
+          name: formData.name,          // Parent's name
           childName: formData.childName,
           childEmail: formData.childEmail,
         });
@@ -141,7 +141,7 @@ export default function ShikshaSetuRegistration() {
               <option value="">Select Role</option>
               <option value="student">Student</option>
               <option value="teacher">Teacher</option>
-              <option value="parent">Parent</option>
+              <option value="Parent">Parent</option>
             </select>
           </div>
 
@@ -150,7 +150,7 @@ export default function ShikshaSetuRegistration() {
             <>
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">
-                  {formData.role === "parent" ? "Parent's Name" : "Full Name"}
+                  {formData.role === "Parent" ? "Parent's Name" : "Full Name"}
                 </label>
                 <input
                   type="text"
@@ -160,8 +160,8 @@ export default function ShikshaSetuRegistration() {
                   required
                   className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70 placeholder-gray-400"
                   placeholder={
-                    formData.role === "parent"
-                      ? "Enter parent's full name"
+                    formData.role === "Parent"
+                      ? "Enter Parent's full name"
                       : "Enter your full name"
                   }
                 />
@@ -343,7 +343,7 @@ export default function ShikshaSetuRegistration() {
           )}
 
           {/* Parent Form */}
-          {formData.role === "parent" && (
+          {formData.role === "Parent" && (
             <>
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">

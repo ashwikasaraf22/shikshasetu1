@@ -27,7 +27,7 @@ export default function LoginPage() {
       const uid = cred.user.uid;
       const snap = await getDoc(doc(db, "users", uid));
       const role =
-        (snap.data()?.role as "student" | "teacher" | "parent") || "student";
+        (snap.data()?.role as "student" | "teacher" | "Parent") || "student";
 
       // 🔽 Prefer redirect param if present (e.g., /login?redirect=/profile)
       if (redirect) {
@@ -36,7 +36,7 @@ export default function LoginPage() {
       }
 
       // 🔽 Route by role
-      if (role === "parent") router.replace("/parent");
+      if (role === "Parent") router.replace("/parent");
       else if (role === "teacher") router.replace("/teacher");
       else router.replace("/home");
     } catch (err: any) {

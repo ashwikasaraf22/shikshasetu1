@@ -2,137 +2,211 @@
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { BookText, MessageCircle, Eye } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  Timestamp,
+  QuerySnapshot,
+  DocumentData,
+} from 'firebase/firestore';
 
 type Activity = {
-  type: 'quiz' | 'question';
-  title: string;
-  score?: number;
-  status?: string;
-  time: string;
+  type: 'quiz';
+  subject: string;
+  chapter: string;
+  score: number;
+  timestamp?: Timestamp | null;
 };
+
+function timeAgoFromTimestamp(ts?: Timestamp | null): string {
+  if (!ts) return 'just now';
+  const date = ts.toDate();
+  const diffMs = Date.now() - date.getTime();
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return date.toLocaleString();
+}
 
 export default function StudentDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [recentActivity, setRecentActivity] = useState<Activity[] | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user) {
       router.push('/login');
       return;
     }
 
-    const t = setTimeout(() => {
-      setRecentActivity([
-        { type: 'quiz', title: 'Science: Chapter 1', score: 85, time: '1 day ago' },
-        { type: 'question', title: 'History: Chapter 1', status: 'Teacher replied', time: '3 days ago' },
-      ]);
-    }, 500);
+    // Build the query: studentID == uid, order by timestamp desc, limit 4
+    const q = query(
+      collection(db, 'quizAttempts'),
+      where('studentID', '==', user.uid),
+      orderBy('timestamp', 'desc'),
+      limit(4)
+    );
 
-    return () => clearTimeout(t);
+    const unsub = onSnapshot(
+      q,
+      (snap: QuerySnapshot<DocumentData>) => {
+        setErrorMsg(null);
+        // Debug: log docs we received
+        console.log('[Recent Quizzes] docs:', snap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+        const quizzes: Activity[] = snap.docs.map((d) => {
+          const data = d.data() as {
+            subject?: string;
+            chapter?: string;
+            score?: number;
+            timestamp?: Timestamp | null;
+          };
+          return {
+            type: 'quiz',
+            subject: data.subject ?? '—',
+            chapter: data.chapter ?? '—',
+            score: typeof data.score === 'number' ? data.score : 0,
+            timestamp: data.timestamp ?? null,
+          };
+        });
+        setRecentActivity(quizzes);
+      },
+      (err) => {
+        console.error('[Recent Quizzes] onSnapshot error:', err);
+        // Common cases:
+        // - failed-precondition: composite index needed (where + orderBy)
+        // - permission-denied: Firestore rules don’t allow read
+        // - not-found / aborted: bad collection path or emulator issues
+        setErrorMsg(err?.message || 'Failed to load recent quizzes.');
+        setRecentActivity([]); // graceful UI fallback
+      }
+    );
+
+    return () => unsub();
   }, [user, loading, router]);
+
+  const quizActivities = useMemo(() => recentActivity ?? [], [recentActivity]);
 
   if (loading || !user) {
     return <p className="text-center mt-20">Loading...</p>;
   }
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col bg-gradient-to-br from-[#FFF8F0] via-[#FFF1E6] to-[#FFECEC] text-[#3C2A1E] overflow-hidden">
-      {/* Warm soft background blobs */}
-      <div className="pointer-events-none absolute -top-24 -left-24 w-[28rem] h-[28rem] bg-[#FFE3CC] rounded-full blur-3xl opacity-50" />
-      <div className="pointer-events-none absolute top-1/3 -right-20 w-[26rem] h-[26rem] bg-[#FFD5B8] rounded-full blur-3xl opacity-45" />
-      <div className="pointer-events-none absolute bottom-[-6rem] left-1/4 w-[22rem] h-[22rem] bg-[#FFCBCB] rounded-full blur-3xl opacity-40" />
+    <div className="relative min-h-screen bg-gradient-to-br from-[#ECE7FF] via-[#F6F3FF] to-[#E3F1FF] text-gray-800 overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="pointer-events-none absolute -top-24 -left-20 w-96 h-96 bg-[#F1EBFF] rounded-full blur-3xl opacity-60 animate-pulse" />
+      <div className="pointer-events-none absolute bottom-0 right-0 w-[28rem] h-[28rem] bg-[#DFF3FF] rounded-full blur-3xl opacity-60 animate-pulse delay-700" />
 
-      <div className="relative z-10 p-6 max-w-6xl mx-auto w-full">
-        <h1 className="text-4xl font-bold mb-10 text-center text-[#8B2C00] drop-shadow-sm">
+      {/* Doodles */}
+      <svg className="pointer-events-none absolute top-10 left-10 w-40 h-40 opacity-70" viewBox="0 0 200 200" fill="none">
+        <path d="M40 100 q40 -20 80 0 q-40 20 -80 0" stroke="#B9C8FF" strokeWidth="4" fill="none" />
+        <circle cx="150" cy="70" r="10" fill="#FFD7E5" />
+      </svg>
+      <svg className="pointer-events-none absolute bottom-20 right-20 w-52 h-52 opacity-70" viewBox="0 0 200 200" fill="none">
+        <rect x="100" y="50" width="60" height="12" rx="3" fill="#FBE2A8" />
+        <path d="M100 56 h60" stroke="#F6CC70" strokeWidth="2" />
+        <circle cx="70" cy="130" r="14" fill="#CFE7FF" />
+      </svg>
+
+      {/* Main Content */}
+      <div className="relative z-10 p-6 max-w-5xl mx-auto w-full">
+        {/* Back Button */}
+        <div className="flex justify-start mb-6">
+          <Button
+            className="bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
+            onClick={() => router.back()}
+          >
+            Back
+          </Button>
+        </div>
+
+        {/* Welcome */}
+        <h1 className="text-3x2 sm:text-5xl font-extrabold text-center text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm mb-12">
           Welcome, {user.name || user.displayName || 'Student'}!
         </h1>
 
-        {/* Main Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Start Lesson (gold-peach) */}
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           <div
-            className="relative bg-gradient-to-br from-[#FFF6E0] via-[#FFEAC0] to-[#FFDFA0] p-8 rounded-3xl shadow-lg hover:shadow-2xl transition-transform hover:-translate-y-1 overflow-hidden cursor-pointer ring-1 ring-[#FFE0A5]"
+            className="relative bg-gradient-to-br from-[#CFE7FF] to-[#E5F0FF] p-8 rounded-3xl shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1.5 hover:scale-[1.02] cursor-pointer"
             onClick={() => router.push('/student/lesson')}
           >
-            <BookText className="absolute -top-12 -left-12 h-44 w-44 text-[#FFD678]/40 rotate-12" />
-            <BookText className="h-12 w-12 text-[#A36200] mb-4" />
-            <h2 className="text-2xl font-semibold mb-2 text-[#7E4700]">Start a New Lesson</h2>
-            <p className="text-[#7E4700]/80">Jump into your next chapter with our AI Tutor.</p>
-            <Button className="mt-4 bg-[#E8A400] hover:bg-[#D59200] text-white transition-transform hover:scale-[1.03]">
+            <BookText className="h-12 w-12 text-[#3E2F9A] mb-4" />
+            <h2 className="text-2xl font-semibold text-[#3E2F9A] mb-2">Start a New Lesson</h2>
+            <p className="text-[#4E3FA3]/80">Jump into your next chapter with our AI Tutor.</p>
+            <Button className="mt-6 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110">
               Go to section
             </Button>
           </div>
 
-          {/* Ask a Question (sunset coral) */}
           <Link href="/student/ask_question">
-            <div className="relative bg-gradient-to-br from-[#FFE7E0] via-[#FFDAD0] to-[#FFC8BA] p-8 rounded-3xl shadow-lg hover:shadow-2xl transition-transform hover:-translate-y-1 overflow-hidden cursor-pointer ring-1 ring-[#FFD3C2]">
-              <MessageCircle className="absolute -top-12 -right-12 h-44 w-44 text-[#FFB199]/60 rotate-12" />
-              <MessageCircle className="h-12 w-12 text-[#C5451D] mb-4" />
-              <h2 className="text-2xl font-semibold mb-2 text-[#A33415]">Ask a Question</h2>
-              <p className="text-[#7E270F]/80">Stuck on a concept? Get instant help.</p>
-              <Button className="mt-4 bg-[#F86B36] hover:bg-[#E45623] text-white transition-transform hover:scale-[1.03]">
+            <div className="relative bg-gradient-to-br from-[#D9F4EC] to-[#E9FFF8] p-8 rounded-3xl shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1.5 hover:scale-[1.02] cursor-pointer">
+              <MessageCircle className="h-12 w-12 text-[#2F7A63] mb-4" />
+              <h2 className="text-2xl font-semibold text-[#2F7A63] mb-2">Ask a Question</h2>
+              <p className="text-[#2F7A63]/80">Stuck on a concept? Get instant help.</p>
+              <Button className="mt-6 bg-gradient-to-r from-[#34A284] to-[#2F7A63] text-white rounded-xl hover:brightness-110">
                 Go to section
               </Button>
             </div>
           </Link>
 
-          {/* Join Community (rosy blush) */}
           <Link href="/student/community">
-            <div className="relative bg-gradient-to-br from-[#FFF0F4] via-[#FFE3EB] to-[#FFD5DE] p-8 rounded-3xl shadow-lg hover:shadow-2xl transition-transform hover:-translate-y-1 overflow-hidden cursor-pointer ring-1 ring-[#FFD0DB]">
-              <Eye className="absolute -bottom-12 -right-12 h-44 w-44 text-[#FFBFD0]/60 -rotate-6" />
-              <Eye className="h-12 w-12 text-[#B73C68] mb-4" />
-              <h2 className="text-2xl font-semibold mb-2 text-[#982C55]">Join the Community</h2>
-              <p className="text-[#752041]/80">Collaborate and learn with your peers.</p>
-              <Button className="mt-4 bg-[#E85C88] hover:bg-[#D14978] text-white transition-transform hover:scale-[1.03]">
+            <div className="relative bg-gradient-to-br from-[#FFE3ED] to-[#FFF1F6] p-8 rounded-3xl shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1.5 hover:scale-[1.02] cursor-pointer">
+              <Eye className="h-12 w-12 text-[#A13C65] mb-4" />
+              <h2 className="text-2xl font-semibold text-[#A13C65] mb-2">Join the Community</h2>
+              <p className="text-[#A13C65]/80">Collaborate and learn with your peers.</p>
+              <Button className="mt-6 bg-gradient-to-r from-[#F57CA0] to-[#C94F75] text-white rounded-xl hover:brightness-110">
                 Go to section
               </Button>
             </div>
           </Link>
         </div>
 
-        {/* Recent Activity Section */}
+        {/* Recent Activity */}
         <section className="mb-12">
-          <h2 className="text-3xl font-bold mb-6 text-center text-[#8B2C00] drop-shadow-sm">
-            Recent Activity
-          </h2>
+          <h2 className="text-3xl font-bold mb-6 text-center text-[#5A4DA8]">Recent Activity</h2>
+
+          {/* Error banner (shows index/rules issues) */}
+          {errorMsg && (
+            <div className="mx-auto mb-6 max-w-xl rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 text-sm">
+              {errorMsg}
+            </div>
+          )}
+
           {recentActivity === null ? (
-            <p className="text-center text-[#7A4E33]">Loading activities...</p>
-          ) : recentActivity.length === 0 ? (
-            <p className="text-center text-[#7A4E33]">No recent activities</p>
+            <p className="text-center text-gray-600">Loading activities...</p>
+          ) : quizActivities.length === 0 ? (
+            <p className="text-center text-gray-600">No recent quizzes yet</p>
           ) : (
-            <ul className="space-y-4">
-              {recentActivity.map((activity, index) => (
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {quizActivities.map((act, index) => (
                 <li
                   key={index}
-                  className={`relative p-4 rounded-2xl shadow hover:shadow-lg transition overflow-hidden ring-1 ${
-                    activity.type === 'quiz'
-                      ? 'bg-gradient-to-br from-[#FFF8E8] via-[#FFF0D0] to-[#FFE7B8] ring-[#FFE5A0]'
-                      : 'bg-gradient-to-br from-[#FFF1EE] via-[#FFE8E4] to-[#FFDCD6] ring-[#FFD3C9]'
-                  }`}
+                  className="relative p-6 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden bg-gradient-to-br from-[#E5DBFF] to-[#F0E9FF]"
                 >
-                  <BookText className="absolute -top-6 -right-6 h-24 w-24 text-[#FFD4A5]/40 rotate-12" />
-                  {activity.type === 'quiz' ? (
-                    <>
-                      <p className="font-semibold text-[#8B2C00]">
-                        Completed quiz for '{activity.title}'
-                      </p>
-                      <p className="text-[#A34200]">Score: {activity.score}%</p>
-                      <p className="text-sm text-[#B34E00]">{activity.time}</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-semibold text-[#A33415]">
-                        Asked a question in '{activity.title}'
-                      </p>
-                      <p className="text-[#C5451D]">Status: {activity.status}</p>
-                      <p className="text-sm text-[#D1572C]">{activity.time}</p>
-                    </>
-                  )}
+                  <BookText className="h-10 w-10 text-[#6B5BBE] mb-3" />
+                  <p className="font-semibold text-[#6B5BBE]">
+                    Completed quiz for '{act.subject}: {act.chapter}'
+                  </p>
+                  <p className="text-[#7C6BF2]">Score: {act.score}</p>
+                  <p className="text-sm text-[#9B87F5]">{timeAgoFromTimestamp(act.timestamp)}</p>
                 </li>
               ))}
             </ul>

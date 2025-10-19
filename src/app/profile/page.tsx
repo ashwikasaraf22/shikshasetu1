@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,6 +14,10 @@ import { auth } from '@/lib/firebase';
 import { Download, Loader2, Edit3, BookOpen, Pencil, Lightbulb, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+// Firestore
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 function ProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -29,20 +32,50 @@ function ProfilePage() {
   const [newClass, setNewClass] = useState(studentClass);
   const classes = ['7th', '8th', '9th'];
 
+  // Class persistence states
+  const [isSavingClass, setIsSavingClass] = useState(false);
+  const [isClassLoading, setIsClassLoading] = useState(true);
+
   // PWA install prompt state
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false); // detect already installed
 
-  // --- Auth gate: wait for loading; if no user after loading, redirect to login
+  // Auth gate
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/login?redirect=/profile');
     }
   }, [loading, user, router]);
 
+  // Load className from Firestore when user becomes available
+  useEffect(() => {
+    const loadClass = async () => {
+      if (!user?.uid) return;
+      try {
+        const ref = doc(db, 'users', user.uid);
+        const snap = await getDoc(ref);
+        const cls = snap.exists() ? (snap.data() as any)?.className : null;
+        const current = cls || studentClass;
+        setStudentClass(current);
+        setNewClass(current);
+      } catch (err: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Could not load class',
+          description: err?.message || 'Please try again.',
+        });
+      } finally {
+        setIsClassLoading(false);
+      }
+    };
+
+    if (!loading && user) {
+      loadClass();
+    }
+  }, [loading, user, toast]); // studentClass default is fine
+
   // Detect standalone / installed state and wire the beforeinstallprompt
   useEffect(() => {
-    // Is app already installed?
     const standalone =
       (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
       // @ts-ignore (iOS Safari)
@@ -69,21 +102,16 @@ function ProfilePage() {
   }, [toast]);
 
   const handleInstallClick = async () => {
-    // If the prompt is available, show it
     if (installPrompt) {
       installPrompt.prompt();
       const { outcome } = await installPrompt.userChoice;
-      if (outcome === 'accepted') {
-        // user accepted; prompt will resolve and appinstalled will fire if install succeeds
-      } else {
+      if (outcome !== 'accepted') {
         toast({ title: 'Install dismissed', description: 'You can install the app later from this page.' });
       }
-      // The prompt can only be used once
       setInstallPrompt(null);
       return;
     }
 
-    // Prompt not available — show a helpful message instead of hiding the button
     if (isStandalone) {
       toast({ title: 'Already installed', description: 'You are already using the installed app.' });
     } else {
@@ -132,15 +160,43 @@ function ProfilePage() {
     }
   };
 
-  const handleClassUpdate = () => {
+  // Save class to Firestore => uses field "className"
+  const handleClassUpdate = async () => {
+    if (!user?.uid) {
+      toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in again.' });
+      return;
+    }
+
+    const prev = studentClass; // for rollback on failure
     setStudentClass(newClass);
-    setIsEditingClass(false);
-    toast({ title: 'Class updated', description: `Your class is now ${newClass}` });
+    setIsSavingClass(true);
+
+    try {
+      const ref = doc(db, 'users', user.uid);
+      await setDoc(
+        ref,
+        {
+          className: newClass, // <-- changed from "class" to "className"
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      setIsEditingClass(false);
+      toast({ title: 'Class updated', description: `Your class is now ${newClass}` });
+    } catch (err: any) {
+      setStudentClass(prev); // rollback
+      toast({
+        variant: 'destructive',
+        title: 'Error updating class',
+        description: err?.message || 'Please try again.',
+      });
+    } finally {
+      setIsSavingClass(false);
+    }
   };
 
-  // While auth is resolving, render nothing (keeps your UI unchanged)
   if (loading) return null;
-  // If unauthenticated, we already triggered redirect above; render nothing
   if (!user) return null;
 
   return (
@@ -185,22 +241,28 @@ function ProfilePage() {
                 <CardDescription>Update your current class from the dropdown below.</CardDescription>
               </CardHeader>
               <CardContent>
-                {isEditingClass ? (
+                {isClassLoading ? (
+                  <div className="flex items-center justify-center py-6 text-sm text-gray-600">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading your class...
+                  </div>
+                ) : isEditingClass ? (
                   <div className="space-y-3">
                     <select
                       value={newClass}
                       onChange={(e) => setNewClass(e.target.value)}
                       className="border p-2 rounded w-full"
+                      disabled={isSavingClass}
                     >
                       {classes.map((cls) => (
                         <option key={cls} value={cls}>{cls}</option>
                       ))}
                     </select>
                     <div className="flex justify-center gap-3">
-                      <Button onClick={handleClassUpdate} className="bg-blue-600 hover:bg-blue-700">
+                      <Button onClick={handleClassUpdate} className="bg-blue-600 hover:bg-blue-700" disabled={isSavingClass}>
+                        {isSavingClass && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save
                       </Button>
-                      <Button onClick={() => setIsEditingClass(false)} variant="outline">
+                      <Button onClick={() => setIsEditingClass(false)} variant="outline" disabled={isSavingClass}>
                         Cancel
                       </Button>
                     </div>

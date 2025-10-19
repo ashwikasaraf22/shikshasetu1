@@ -1,329 +1,131 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Loader2, Eye, MessageSquare, Upload, Edit } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
-import type { Class, UserProfile, Submission, Test } from '@/lib/types';
-import withAuth from '@/components/auth/withAuth';
-import AppHeader from '@/components/AppHeader';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { MessageCircle, Users } from 'lucide-react';
 
-type StudentWithPerformance = UserProfile & {
-  submission?: Submission;
+type Activity = {
+  type: 'doubt' | 'community';
+  title: string;
+  status?: string;
+  time: string;
 };
 
-function TeacherDashboard() {
-  const { user } = useAuth();
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [tests, setTests] = useState<Test[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [students, setStudents] = useState<StudentWithPerformance[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+export default function TeacherDashboard() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [recentActivity, setRecentActivity] = useState<Activity[] | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-    setIsLoading(true);
-    const q = query(collection(db, 'classes'), where('teacherId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const teacherClasses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
-      setClasses(teacherClasses);
-      if (teacherClasses.length > 0 && !selectedClassId) {
-        setSelectedClassId(teacherClasses[0].id);
-      }
-      setIsLoading(false);
-    });
-    
-    // Fetch all tests created by the teacher
-    const testsQuery = query(collection(db, 'tests'), where('createdBy', '==', user.uid));
-    const unsubTests = onSnapshot(testsQuery, (snapshot) => {
-      setTests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test)));
-    });
-
-    return () => {
-      unsubscribe();
-      unsubTests();
-    }
-  }, [user, selectedClassId]);
-
-  useEffect(() => {
-    if (!selectedClassId) {
-        setStudents([]);
-        return;
-    };
-
-    const selectedClass = classes.find(c => c.id === selectedClassId);
-    if (!selectedClass || !selectedClass.studentIds || selectedClass.studentIds.length === 0) {
-        setStudents([]);
-        return;
+    if (!loading && !user) {
+      router.push('/login');
+      return;
     }
 
-    const fetchStudentsAndSubmissions = async () => {
-        setIsLoadingDetails(true);
-        // Fetch student profiles
-        const studentsQuery = query(collection(db, 'users'), where('uid', 'in', selectedClass.studentIds));
-        const studentDocs = await getDocs(studentsQuery);
-        const studentProfiles = studentDocs.docs.map(doc => doc.data() as UserProfile);
+    const t = setTimeout(() => {
+      setRecentActivity([
+        { type: 'doubt', title: 'Solved doubt in Physics: Motion', status: 'Resolved', time: '1 day ago' },
+        { type: 'community', title: 'Shared post in Teaching Innovations', time: '3 days ago' },
+      ]);
+    }, 700);
 
-        // Fetch all submissions for the selected class
-        const submissionsQuery = query(collection(db, 'submissions'), where('classId', '==', selectedClassId));
-        const unsubSubmissions = onSnapshot(submissionsQuery, (snapshot) => {
-            const classSubmissions = snapshot.docs.map(doc => doc.data() as Submission);
-            setSubmissions(classSubmissions);
+    return () => clearTimeout(t);
+  }, [user, loading, router]);
 
-            // Combine student profile with their submission
-            const studentData: StudentWithPerformance[] = studentProfiles.map(p => {
-                const studentSubmissions = classSubmissions.filter(s => s.studentId === p.uid).sort((a,b) => b.submittedAt.toMillis() - a.submittedAt.toMillis());
-                return {
-                    ...p,
-                    submission: studentSubmissions[0] // get the most recent one
-                };
-            });
-            setStudents(studentData);
-        });
-
-        setIsLoadingDetails(false);
-        return () => unsubSubmissions();
-    };
-
-    fetchStudentsAndSubmissions();
-  }, [selectedClassId, classes]);
-
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
+  if (loading || !user) {
+    return <p className="text-center mt-20 text-gray-500">Loading...</p>;
   }
 
-  const selectedClass = classes.find((c) => c.id === selectedClassId);
-  const classTests = tests.filter(t => t.classId === selectedClassId && !t.isDraft);
-  const draftTests = tests.filter(t => t.isDraft);
-
   return (
-    <div className="flex flex-col min-h-screen bg-muted/40">
-       <AppHeader title="Teacher Dashboard">
-            <Link href="/teacher/create-test">
-                <Button>
-                    <PlusCircle className="mr-2" />
-                    Create New Test
-                </Button>
-            </Link>
-       </AppHeader>
-      <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="grid gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-             <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Your Classes</CardTitle>
-                <CardDescription>Select a class to view details.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {classes.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">You have not been assigned to any classes yet.</p>
-                ) : (
-                    classes.map((c) => (
-                    <button
-                        key={c.id}
-                        onClick={() => setSelectedClassId(c.id)}
-                        className={cn(
-                        "w-full text-left p-4 rounded-lg border transition-colors",
-                        selectedClassId === c.id
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "hover:bg-muted/50"
-                        )}
-                    >
-                        <p className="font-semibold">{c.name}</p>
-                        <p className={cn("text-sm", selectedClassId === c.id ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                            Division: {c.division}
-                        </p>
-                    </button>
-                    ))
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card>
-                 <CardHeader>
-                    <CardTitle>Quick Actions</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-4">
-                     <Button asChild className="w-full">
-                         <Link href="/chat">
-                            <MessageSquare className="mr-2"/> Start a Chat
-                         </Link>
-                     </Button>
-                     <Button asChild className="w-full">
-                         <Link href="/community">
-                            <Upload className="mr-2"/> Go to Community
-                         </Link>
-                     </Button>
-                 </CardContent>
-            </Card>
-          </div>
-          <div className="lg:col-span-2">
-            {selectedClass ? (
-              <Tabs defaultValue="assigned">
-                <TabsList className="mb-4">
-                    <TabsTrigger value="assigned">Assigned Tests</TabsTrigger>
-                    <TabsTrigger value="drafts">My Drafts</TabsTrigger>
-                    <TabsTrigger value="students">Students</TabsTrigger>
-                </TabsList>
-                <TabsContent value="assigned">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Tests for {selectedClass.name}</CardTitle>
-                            <CardDescription>Tests you have assigned to this class.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                        <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Test Name</TableHead>
-                                        <TableHead>Submissions</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {classTests.length === 0 ? (
-                                        <TableRow><TableCell colSpan={3} className="h-24 text-center">No tests assigned to this class yet.</TableCell></TableRow>
-                                    ) : (
-                                        classTests.map(test => {
-                                            const submissionCount = submissions.filter(s => s.testId === test.id && s.evaluation).length;
-                                            return (
-                                                <TableRow key={test.id}>
-                                                    <TableCell className="font-medium">{test.name}</TableCell>
-                                                    <TableCell>{submissionCount} / {selectedClass.studentIds.length}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button asChild variant="outline" size="sm">
-                                                            <Link href={`/teacher/test/${test.id}`}>
-                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                View Submissions
-                                                            </Link>
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="drafts">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>My Drafts</CardTitle>
-                            <CardDescription>Unpublished tests you have created.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Draft Name</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {draftTests.length === 0 ? (
-                                        <TableRow><TableCell colSpan={2} className="h-24 text-center">You have no drafts.</TableCell></TableRow>
-                                    ) : (
-                                        draftTests.map(test => (
-                                            <TableRow key={test.id}>
-                                                <TableCell className="font-medium">{test.name}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button asChild variant="outline" size="sm">
-                                                        <Link href={`/teacher/create-test?draftId=${test.id}`}>
-                                                            <Edit className="mr-2 h-4 w-4" />
-                                                            Edit
-                                                        </Link>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="students">
-                    <Card>
-                        <CardHeader>
-                        <CardTitle>Students in {selectedClass.name} - Div {selectedClass.division}</CardTitle>
-                        <CardDescription>Overview of student performance and test status.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                        {isLoadingDetails ? (
-                            <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead>Last Test Status</TableHead>
-                                </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                {students.length === 0 ? (
-                                <TableRow>
-                                        <TableCell colSpan={2} className="text-center h-24">No students enrolled in this class.</TableCell>
-                                </TableRow> 
-                                ) : (
-                                    students.map((student) => {
-                                        const submission = student.submission;
-                                        let status = <Badge variant="outline">No submissions</Badge>;
-                                        if(submission?.evaluation) {
-                                            status = <Badge variant="default">Completed</Badge>
-                                        } else if(submission) {
-                                            status = <Badge variant="secondary">In Progress</Badge>
-                                        }
-                                        return (
-                                            <TableRow key={student.uid}>
-                                                <TableCell className="font-medium">{student.email}</TableCell>
-                                                <TableCell>{status}</TableCell>
-                                            </TableRow>
-                                        )
-                                    })
-                                )}
-                                </TableBody>
-                            </Table>
-                        )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-              </Tabs>
-            ) : (
-                <div className="flex items-center justify-center h-full rounded-lg border border-dashed">
-                    <p className="text-muted-foreground">Select a class to see details.</p>
-                </div>
-            )}
-          </div>
+    <div className="relative min-h-screen w-full bg-gradient-to-br from-[#FFF1F8] via-[#E8FFF8] to-[#FFF9E7] text-gray-800 overflow-hidden">
+      {/* Background Doodles - corners/edges only */}
+      <div className="absolute top-5 left-5 w-16 h-16 bg-yellow-200 rounded-full opacity-40" />
+      <div className="absolute top-10 right-10 w-12 h-12 bg-pink-200 rounded-full opacity-40" />
+      <div className="absolute bottom-10 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-30" />
+      <div className="absolute bottom-10 right-10 w-24 h-24 bg-cyan-200 rounded-full opacity-25" />
+      <div className="absolute top-1/2 left-5 w-12 h-12 bg-green-200 rounded-full opacity-30" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+        {/* Hero / Welcome Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-purple-700 drop-shadow-lg mb-4">
+            Welcome, {user.name || user.displayName || 'Teacher'} 👋
+          </h1>
+          <p className="text-lg text-gray-700 max-w-2xl mx-auto">
+            Engage with your students, solve doubts, and connect with the teaching community in one place!
+          </p>
         </div>
-      </main>
+
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          {/* Doubt Solver Card */}
+          <Link href="/teacher/doubt_solver">
+            <div className="relative p-8 rounded-3xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-transform cursor-pointer overflow-hidden bg-gradient-to-br from-blue-200 via-blue-100 to-blue-50 border border-blue-300/40 backdrop-blur-sm">
+              <MessageCircle className="absolute -top-10 -right-10 h-40 w-40 text-blue-300 opacity-30 rotate-12" />
+              <MessageCircle className="h-14 w-14 text-blue-700 mb-4" />
+              <h2 className="text-2xl font-semibold mb-2 text-blue-800">Doubt Solver</h2>
+              <p className="text-blue-900 mb-4">Quickly answer and manage student queries.</p>
+              <Button className="bg-gradient-to-r from-blue-300 via-blue-200 to-blue-100 hover:from-blue-400 hover:via-blue-300 hover:to-blue-200 text-blue-900 transition-transform hover:scale-105 shadow-md">
+                Open Doubt Solver
+              </Button>
+            </div>
+          </Link>
+
+          {/* Community Card */}
+          <Link href="/teacher/community">
+            <div className="relative p-8 rounded-3xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-transform cursor-pointer overflow-hidden bg-gradient-to-br from-pink-200 via-pink-100 to-purple-50 border border-pink-300/40 backdrop-blur-sm">
+              <Users className="absolute -bottom-10 -right-10 h-40 w-40 text-pink-300 opacity-30 rotate-12" />
+              <Users className="h-14 w-14 text-pink-700 mb-4" />
+              <h2 className="text-2xl font-semibold mb-2 text-pink-800">Teacher Community</h2>
+              <p className="text-pink-900 mb-4">Share ideas and collaborate with fellow educators.</p>
+              <Button className="bg-gradient-to-r from-pink-300 via-pink-200 to-purple-100 hover:from-pink-400 hover:via-pink-300 hover:to-purple-200 text-pink-900 transition-transform hover:scale-105 shadow-md">
+                Join Community
+              </Button>
+            </div>
+          </Link>
+        </div>
+
+        {/* Recent Activity Section */}
+        <section>
+          <h2 className="text-3xl font-bold mb-6 text-center text-purple-700 drop-shadow-lg">
+            Recent Activity
+          </h2>
+          {recentActivity === null ? (
+            <p className="text-center text-gray-500">Loading activities...</p>
+          ) : recentActivity.length === 0 ? (
+            <p className="text-center text-gray-500">No recent activities</p>
+          ) : (
+            <div className="flex gap-4 overflow-x-auto py-4">
+              {recentActivity.map((activity, index) => (
+                <div
+                  key={index}
+                  className={`flex-shrink-0 w-72 p-4 rounded-2xl shadow hover:shadow-lg transition border border-opacity-20 ${
+                    activity.type === 'doubt'
+                      ? 'bg-gradient-to-br from-blue-200 via-blue-100 to-blue-50 border border-blue-300/40'
+                      : 'bg-gradient-to-br from-pink-100 via-pink-50 to-purple-100 border border-pink-300/30'
+                  }`}
+                >
+                  {activity.type === 'doubt' ? (
+                    <>
+                      <p className="font-semibold text-blue-800">{activity.title}</p>
+                      <p className="text-blue-900">Status: {activity.status}</p>
+                      <p className="text-sm text-blue-700">{activity.time}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-pink-700">{activity.title}</p>
+                      <p className="text-sm text-pink-600">{activity.time}</p>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
-
-export default withAuth(TeacherDashboard, ['teacher']);
