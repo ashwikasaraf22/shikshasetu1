@@ -18,6 +18,8 @@ import {
   onSnapshot,
   serverTimestamp,
   addDoc,
+  doc,               // ⬅️ added
+  getDoc            // (not used here but fine if you want it)
 } from 'firebase/firestore';
 
 /**
@@ -141,6 +143,9 @@ export default function AskTeacherPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newFollowup, setNewFollowup] = useState('');
 
+  // 🔔 call state: becomes true when teacher starts the call
+  const [callActive, setCallActive] = useState<boolean>(false);
+
   // Keep hooks un-conditional: do not return early before this
   useEffect(() => {
     if (!teacherSubject) setTeacherChapter('');
@@ -226,6 +231,26 @@ export default function AskTeacherPage() {
     return () => unsub();
   }, [selectedDoubt]);
 
+  // 🔔 Subscribe to the doubt document itself to know when a call is active
+  useEffect(() => {
+    if (!selectedDoubt?.id) {
+      setCallActive(false);
+      return;
+    }
+    const dref = doc(db, 'doubts', selectedDoubt.id);
+    const unsub = onSnapshot(
+      dref,
+      (snap) => {
+        const data = snap.data() as any;
+        setCallActive(!!data?.callActive);
+      },
+      (err) => {
+        console.error('onSnapshot(doubt doc) error:', err);
+      }
+    );
+    return () => unsub();
+  }, [selectedDoubt?.id]);
+
   const handleSubmitToTeacher = async () => {
     if (!teacherSubject || !teacherChapter || !teacherQuestion.trim()) {
       alert('Please fill all fields.');
@@ -256,6 +281,7 @@ export default function AskTeacherPage() {
         status: 'Pending',
         createdAt: serverTimestamp(),
         lastUpdatedAt: serverTimestamp(),
+        callActive: false, // ensure present
       });
 
       setTeacherQuestion('');
@@ -446,6 +472,22 @@ export default function AskTeacherPage() {
                   {selectedDoubt.chapter} ({selectedDoubt.subject})
                 </h2>
                 <p className="text-gray-700 mb-4">Your Doubt: {selectedDoubt.question}</p>
+
+                {/* 🔔 Call join strip */}
+                <div className="mb-4 flex items-center justify-between rounded-xl border p-3 bg-purple-50">
+                  <span className="text-sm text-purple-800">
+                    {callActive ? 'Teacher has started a call for this doubt.' : 'Waiting for teacher to start the call…'}
+                  </span>
+                  <Button
+                    onClick={() => router.push(`/call/${selectedDoubt.id}`)}
+                    disabled={!callActive}
+                    className={callActive
+                      ? 'bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white hover:brightness-110'
+                      : 'bg-[#EEE9FF] text-[#8A82B8] cursor-not-allowed'}
+                  >
+                    Join Call
+                  </Button>
+                </div>
 
                 {/* Conversation */}
                 <div className="h-80 overflow-y-auto border border-purple-100 rounded-xl p-4 bg-purple-50/50 mb-4">
