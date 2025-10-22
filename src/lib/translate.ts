@@ -354,3 +354,4 @@ export async function translateFromEnglish(textEn: string, targetLang: string): 
   }
   return out;
 }
+

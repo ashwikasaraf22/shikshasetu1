@@ -2,24 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { auth, db } from '@/lib/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
-type CommunityPost = {
-  id: string;
-  title: string;
-  description: string;
-  createdAt: string; // ISO
-};
-
-function uid() {
-  return (
-    'id-' +
-    Math.random().toString(36).slice(2, 8) +
-    '-' +
-    Date.now().toString(36)
-  );
-}
-
-const POSTS_KEY = 'communityPosts';
+const COLLECTION_NAME = 'community_share'; // <-- writes here
 
 export default function ShareSomething() {
   const router = useRouter();
@@ -30,36 +16,47 @@ export default function ShareSomething() {
   const [error, setError] = useState<string | null>(null);
   const [posted, setPosted] = useState(false);
 
-  const onPost = (e: React.FormEvent) => {
+  const onPost = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setPosted(false);
 
     const t = title.trim();
     const d = description.trim();
+
     if (!t || !d) {
       setError('Please add a title and description before posting.');
       return;
     }
 
+    // Ensure user is logged in
+    const user = auth.currentUser;
+    if (!user) {
+      setError('You need to be signed in to post. Please log in and try again.');
+      return;
+    }
+
     setPosting(true);
     try {
-      const existing: CommunityPost[] = JSON.parse(localStorage.getItem(POSTS_KEY) || '[]');
-      const newPost: CommunityPost = {
-        id: uid(),
+      await addDoc(collection(db, COLLECTION_NAME), {
         title: t,
         description: d,
-        createdAt: new Date().toISOString(),
-      };
-      const updated = [newPost, ...existing];
-      localStorage.setItem(POSTS_KEY, JSON.stringify(updated));
+        studentId: user.uid,
+        createdAt: serverTimestamp(),
+      });
 
       setTitle('');
       setDescription('');
       setPosted(true);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      setError('Something went wrong while saving your post.');
+      const message =
+        (err as any)?.code
+          ? `(${(err as any).code}) ${(err as any).message}`
+          : err instanceof Error
+            ? err.message
+            : 'Something went wrong while saving your post.';
+      setError(message);
     } finally {
       setPosting(false);
     }
@@ -108,7 +105,14 @@ export default function ShareSomething() {
               aria-label="Back to Community"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" className="-ml-0.5">
-                <path d="M15 18l-6-6 6-6" fill="none" stroke="#6F5AE8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M15 18l-6-6 6-6"
+                  fill="none"
+                  stroke="#6F5AE8"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
               Back
             </button>
@@ -213,7 +217,12 @@ export default function ShareSomething() {
             fill="none"
             aria-hidden="true"
           >
-            <path d="M10 80 q30 -20 70 0 q20 10 30 20" stroke="#B8E2D6" strokeWidth="4" strokeLinecap="round" />
+            <path
+              d="M10 80 q30 -20 70 0 q20 10 30 20"
+              stroke="#B8E2D6"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
             <rect x="70" y="18" width="32" height="10" rx="5" fill="#FFD3E2" />
             <circle cx="28" cy="26" r="8" fill="#E1D4FF" />
           </svg>

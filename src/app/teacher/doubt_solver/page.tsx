@@ -17,14 +17,14 @@ import { addTeacherMessage } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
 // === Gemini translator ===
-// Tries browser-exposed key first; gracefully falls back if missing.
+// Uses NEXT_PUBLIC_GEMINI_API_KEY in browser or GEMINI_API_KEY on server.
 const GEMINI_API_KEY =
   (process.env.NEXT_PUBLIC_GEMINI_API_KEY as string | undefined) ||
   (process.env.GEMINI_API_KEY as string | undefined);
 
 async function translateWithGemini(input: string, targetLang: string): Promise<string> {
   if (!input?.trim()) return '';
-  if (!GEMINI_API_KEY) return input; // show original if no key
+  if (!GEMINI_API_KEY) return input; // fallback: show original if no key
 
   const langMap: Record<string, string> = {
     en: 'English',
@@ -75,6 +75,11 @@ async function translateWithGemini(input: string, targetLang: string): Promise<s
   }
 }
 
+// Convenience helper to enforce EN
+async function toEnglish(input: string) {
+  return translateWithGemini(input, 'en');
+}
+
 export default function DoubtSolverPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -85,9 +90,9 @@ export default function DoubtSolverPage() {
   const [newMessage, setNewMessage] = useState('');
 
   // EN versions
-  const [selectedDoubtEnglish, setSelectedDoubtEnglish] = useState<string>('');     // translated student doubt for teacher
+  const [selectedDoubtEnglish, setSelectedDoubtEnglish] = useState<string>(''); // always-English student doubt
   const [translatedMsgMap, setTranslatedMsgMap] = useState<Record<string, string>>({}); // per-message EN cache
-  const [previewEnMap, setPreviewEnMap] = useState<Record<string, string>>({});     // card previews in EN
+  const [previewEnMap, setPreviewEnMap] = useState<Record<string, string>>({}); // card previews in EN
 
   // Teacher profile fields (adapt if your user profile stores differently)
   const teacherSubject = (user as any)?.subject || 'Science';
@@ -118,22 +123,16 @@ export default function DoubtSolverPage() {
 
         setDoubts(data);
 
-        // Build/refresh EN previews for the cards
+        // Build/refresh EN previews for the cards (force English)
         const newPreviewMap: Record<string, string> = { ...previewEnMap };
         for (const d of data) {
           if (newPreviewMap[d.id]) continue; // already have it
-          const baseText = d.text_en || d.text_original || d.text || '';
+          const baseText = d.text_original || d.text || d.text_en || '';
           if (!baseText) {
             newPreviewMap[d.id] = '';
             continue;
           }
-          if (d.text_en || (d.language || 'en') === 'en') {
-            newPreviewMap[d.id] = d.text_en || baseText;
-          } else {
-            // translate once and cache
-            const tr = await translateWithGemini(baseText, 'en');
-            newPreviewMap[d.id] = tr || baseText;
-          }
+          newPreviewMap[d.id] = await toEnglish(baseText);
         }
         setPreviewEnMap(newPreviewMap);
       },
@@ -146,7 +145,7 @@ export default function DoubtSolverPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, teacherSubject, teacherClass]);
 
-  // --- Load chat messages & translate student's original text to EN for the teacher view
+  // --- Load chat messages & ALWAYS translate student's original doubt to English for the teacher view
   useEffect(() => {
     if (!selectedDoubt) return;
 
@@ -162,54 +161,49 @@ export default function DoubtSolverPage() {
       (err) => console.error('onSnapshot(messages) error:', err)
     );
 
-    // 2) translate the student's initial doubt to English if needed
+    // 2) ALWAYS translate the student's initial doubt to English
     (async () => {
       const baseText =
-        selectedDoubt?.text_en ||
         selectedDoubt?.text_original ||
         selectedDoubt?.text ||
+        selectedDoubt?.text_en ||
         '';
-      const lang = selectedDoubt?.language || 'en';
 
       if (!baseText) {
         setSelectedDoubtEnglish('');
         return;
       }
-      if (selectedDoubt?.text_en || lang === 'en') {
-        setSelectedDoubtEnglish(selectedDoubt?.text_en || baseText);
-      } else {
-        const translated = await translateWithGemini(baseText, 'en');
-        setSelectedDoubtEnglish(translated);
-      }
+      const translated = await toEnglish(baseText);
+      setSelectedDoubtEnglish(translated);
     })();
 
-    // reset cache on doubt change
+    // reset per-message translation cache when changing doubts
     setTranslatedMsgMap({});
 
     return () => unsub();
   }, [selectedDoubt]);
 
-  // --- Translate incoming student messages (without text_en) → English, cache per message
+  // --- Translate incoming student messages → English (always), cache per message
   useEffect(() => {
     (async () => {
       if (!selectedDoubt || !messages.length) return;
-      const studentLang = selectedDoubt.language || 'en';
 
       const updates: Record<string, string> = {};
       for (const msg of messages) {
         const isStudent = msg.senderRole === 'student';
-        const alreadyCached = translatedMsgMap[msg.id] !== undefined;
-        const hasEnglish = !!msg.text_en;
-        const source = msg.text_original || msg.text || '';
+        if (!isStudent) continue; // Only translate student's messages for teacher view
 
-        if (!isStudent) continue;              // only translate student's messages for teacher view
-        if (hasEnglish) continue;              // no need if English already stored
-        if (!source) continue;                 // nothing to translate
-        if (alreadyCached) continue;           // already translated/cached
+        const source = (msg.text_original || msg.text || msg.text_en || '').trim();
+        if (!source) continue;
 
-        const en = studentLang === 'en' ? source : await translateWithGemini(source, 'en');
+        // Skip if we already cached a translation for this message id
+        if (translatedMsgMap[msg.id] !== undefined) continue;
+
+        // FORCE English regardless of existing msg.text_en
+        const en = await toEnglish(source);
         updates[msg.id] = en;
       }
+
       if (Object.keys(updates).length) {
         setTranslatedMsgMap((prev) => ({ ...prev, ...updates }));
       }
@@ -224,7 +218,7 @@ export default function DoubtSolverPage() {
       const english = newMessage.trim();
       const studentLang = (selectedDoubt.language || 'en') as string;
 
-      // Translate teacher EN → student's language
+      // Teacher types in EN; translate to student's language for their view
       const localized =
         studentLang === 'en'
           ? english
@@ -250,12 +244,11 @@ export default function DoubtSolverPage() {
     <div className="relative min-h-screen bg-gradient-to-br from-[#E8FFF8] via-[#FFF0F6] to-[#FFF9E7] p-8">
       <h1 className="text-4xl font-bold text-purple-700 mb-8 text-center">Doubt Solver 💬</h1>
 
-      {/* Doubts List */}
+      {/* Doubts List (previews forced to English) */}
       {!selectedDoubt && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {doubts.map((doubt) => {
-            const basePreview = doubt.text_en || doubt.text_original || doubt.text || '';
-            // Always show EN preview (either stored or translated/cached)
+            const basePreview = doubt.text_original || doubt.text || doubt.text_en || '';
             const previewEN = previewEnMap[doubt.id] || basePreview;
 
             return (
@@ -312,9 +305,12 @@ export default function DoubtSolverPage() {
             {selectedDoubt.classGrade ? ` • Class ${selectedDoubt.classGrade}` : ''})
           </h2>
 
-          {/* Teacher sees the student's doubt in EN (translated if needed) */}
+          {/* Teacher sees the student's doubt in EN (ALWAYS translated) */}
           <p className="text-gray-700 mb-4">
-            Student Doubt (EN): {selectedDoubtEnglish || '(no text)'}
+            <span className="font-semibold">Student Doubt (EN): </span>
+            <span lang="en" translate="no" className="font-medium">
+              {selectedDoubtEnglish || '(no text)'}
+            </span>
           </p>
 
           {/* Chat Messages */}
@@ -325,10 +321,11 @@ export default function DoubtSolverPage() {
             {messages.map((msg) => {
               const isTeacher = msg.senderRole === 'teacher' || msg.senderId === user?.uid;
 
-              // Teacher view shows English: prefer stored text_en; otherwise use translated cache
-              const source = msg.text_en || msg.text_original || msg.text || '';
-              const display = !msg.text_en && translatedMsgMap[msg.id]
-                ? translatedMsgMap[msg.id]
+              // For teacher messages, show as-is (English).
+              // For student messages, prefer our forced English translation cache; fallback to source.
+              const source = (msg.text_en || msg.text_original || msg.text || '').trim();
+              const display = !isTeacher
+                ? (translatedMsgMap[msg.id] ?? source)
                 : source;
 
               return (

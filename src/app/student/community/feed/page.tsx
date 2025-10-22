@@ -2,12 +2,20 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import {
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+} from 'firebase/firestore';
 
 type CommunityPost = {
   id: string;
   title: string;
   description: string;
-  createdAt: string; // ISO
+  createdAt: string; // ISO string for UI formatting
 };
 
 type Comment = {
@@ -17,8 +25,8 @@ type Comment = {
   createdAt: string; // ISO
 };
 
-const POSTS_KEY = 'communityPosts';
-const COMMENTS_KEY = 'communityComments';
+const POSTS_KEY = 'communityPosts';       // kept (unused for Firestore posts; UI unchanged)
+const COMMENTS_KEY = 'communityComments'; // still used for comments
 
 function uid() {
   return (
@@ -52,17 +60,65 @@ export default function CommunityExploreFeed() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
+  // Load comments (localStorage) — unchanged
   useEffect(() => {
     try {
-      const rawPosts = localStorage.getItem(POSTS_KEY) || '[]';
       const rawComments = localStorage.getItem(COMMENTS_KEY) || '[]';
-      setPosts(JSON.parse(rawPosts));
       setComments(JSON.parse(rawComments));
     } catch (e) {
       console.error(e);
-      setPosts([]);
       setComments([]);
       setError('Could not load posts.');
+    }
+  }, []);
+
+  // Fetch posts from Firestore: community_share (live updates)
+  useEffect(() => {
+    try {
+      const q = query(
+        collection(db, 'community_share'),
+        orderBy('createdAt', 'desc')
+      );
+
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const list: CommunityPost[] = snap.docs.map((doc) => {
+            const data = doc.data() as any;
+            // createdAt can be Timestamp | string | undefined
+            let createdISO = '';
+            if (data?.createdAt instanceof Timestamp) {
+              createdISO = data.createdAt.toDate().toISOString();
+            } else if (typeof data?.createdAt === 'string') {
+              createdISO = data.createdAt;
+            } else {
+              // fallback: let UI handle gracefully
+              createdISO = '';
+            }
+
+            return {
+              id: doc.id,
+              title: data?.title ?? '',
+              description: data?.description ?? '',
+              createdAt: createdISO,
+            };
+          });
+
+          setPosts(list);
+          // We no longer write posts to localStorage (data source is Firestore).
+        },
+        (err) => {
+          console.error('Firestore feed error:', err);
+          setError('Could not load posts.');
+          setPosts([]);
+        }
+      );
+
+      return () => unsub();
+    } catch (e) {
+      console.error(e);
+      setError('Could not load posts.');
+      setPosts([]);
     }
   }, []);
 
@@ -97,27 +153,29 @@ export default function CommunityExploreFeed() {
     localStorage.setItem(COMMENTS_KEY, JSON.stringify(updated));
   };
 
+  // Keep UI same: local "delete" just removes from current view (does not delete from Firestore)
   const deletePost = (postId: string) => {
     if (!posts) return;
-    const ok = window.confirm('Delete this post? This will also remove its comments.');
+    const ok = window.confirm('Delete this post? This will also remove its comments (locally).');
     if (!ok) return;
 
-    // Remove post
+    // Remove post from in-memory list only (since Firestore posts are owned by creators/admins)
     const updatedPosts = posts.filter((p) => p.id !== postId);
     setPosts(updatedPosts);
-    localStorage.setItem(POSTS_KEY, JSON.stringify(updatedPosts));
 
-    // Remove associated comments
+    // Remove associated comments (local)
     const updatedComments = comments.filter((c) => c.postId !== postId);
     setComments(updatedComments);
     localStorage.setItem(COMMENTS_KEY, JSON.stringify(updatedComments));
 
-    // Clean any draft
+    // Clear any draft (local)
     setDrafts((d) => {
       const copy = { ...d };
       delete copy[postId];
       return copy;
     });
+
+    // Note: we intentionally do not write POSTS_KEY anymore.
   };
 
   return (
@@ -199,7 +257,7 @@ export default function CommunityExploreFeed() {
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-xl font-semibold text-[#3F338C]">{p.title}</h3>
 
-                    {/* Delete button */}
+                    {/* Delete button (local view-only removal to keep UI same) */}
                     <button
                       onClick={() => deletePost(p.id)}
                       className="inline-flex items-center gap-1 rounded-lg border border-[#FFD6DE] bg-[#FFF1F4] px-2.5 py-1.5 text-xs font-semibold text-[#7C2A3A] hover:bg-white hover:shadow"

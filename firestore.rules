@@ -226,5 +226,33 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // ========================================================
+    // ✅ ADDED: COMMUNITY SHARE (student posts)
+    // Path: /community_share/{postId}
+    // ========================================================
+    match /community_share/{postId} {
+      // Anyone signed in can read posts (adjust to your needs)
+      allow read: if isSignedIn();
+
+      // Only the signed-in student can create their own post
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        // With serverTimestamp(), just require the field exists
+        && request.resource.data.keys().hasAll(['title','description','studentId','createdAt']);
+
+      // (Optional) allow owner to update their post; remove if posts must be immutable
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.studentId
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.keys().hasAll(['title','description','studentId','createdAt']);
+
+      // Restrict deletes to admin
+      allow delete: if isRole('admin');
+    }
   }
 }

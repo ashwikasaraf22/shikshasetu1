@@ -1,0 +1,3358 @@
+{
+  "7": {
+    "Science": {
+      "Magnets": {
+        "Easy": [
+          {
+            "id": "g7-sci-mag-1",
+            "text": "What will the like poles of two magnets do?",
+            "options": [
+              {
+                "label": "a) will attract",
+                "value": "will attract"
+              },
+              {
+                "label": "b) will repel",
+                "value": "will repel"
+              },
+              {
+                "label": "c) neither attracted nor repelled",
+                "value": "neither attracted nor repelled"
+              },
+              {
+                "label": "d) first attracted then repelled",
+                "value": "first attract then repel"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-sci-mag-2",
+            "text": "What are the ends of a bar magnet called?",
+            "options": [
+              {
+                "label": "a) tips",
+                "value": "tip"
+              },
+              {
+                "label": "b) Poles",
+                "value": "Dhruv"
+              },
+              {
+                "label": "c) Edges",
+                "value": "shore"
+              },
+              {
+                "label": "d) center",
+                "value": "center"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-sci-mag-3",
+            "text": "Approximately in which direction does a freely suspended bar magnet rest?",
+            "options": [
+              {
+                "label": "a) Geographic East-West",
+                "value": "geographical east-west"
+              },
+              {
+                "label": "b) Geographic North-South",
+                "value": "geographical north-south"
+              },
+              {
+                "label": "c) towards the sky",
+                "value": "towards the sky"
+              },
+              {
+                "label": "d) towards the earth",
+                "value": "towards earth"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-sci-mag-4",
+            "text": "Which of the following is a natural magnet?",
+            "options": [
+              {
+                "label": "a) Hematite",
+                "value": "hematite"
+              },
+              {
+                "label": "b) Magnetite (Lodestone)",
+                "value": "Magnetite (Lodestone)"
+              },
+              {
+                "label": "c) Galena",
+                "value": "galena"
+              },
+              {
+                "label": "d) Bauxite",
+                "value": "bauxite"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-sci-mag-5",
+            "text": "At which place is the magnetic field highest?",
+            "options": [
+              {
+                "label": "a) in the middle",
+                "value": "between"
+              },
+              {
+                "label": "b) at the poles",
+                "value": "at the poles"
+              },
+              {
+                "label": "c) at random points",
+                "value": "random point"
+              },
+              {
+                "label": "d) only at the edges",
+                "value": "edge only"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      },
+      "Methods of Seperation": {
+        "Easy": [
+          {
+            "id": "g7-sci-sep-1",
+            "text": "Which is the appropriate method to separate sand from water?",
+            "options": [
+              {
+                "label": "a) evaporation",
+                "value": "evaporation"
+              },
+              {
+                "label": "b) filtration",
+                "value": "filtration"
+              },
+              {
+                "label": "c) Distillation",
+                "value": "distillation"
+              },
+              {
+                "label": "d) Chromatography",
+                "value": "Chromatography"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-sci-sep-2",
+            "text": "Evaporation is useful to obtain—",
+            "options": [
+              {
+                "label": "a) Salt from salt solution",
+                "value": "salt from salt solution"
+              },
+              {
+                "label": "b) water to oil",
+                "value": "water to oil"
+              },
+              {
+                "label": "c) Iron filings from sand",
+                "value": "sand iron filings"
+              },
+              {
+                "label": "d) pebbles from rice",
+                "value": "pebbles from rice"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g7-sci-sep-3",
+            "text": "Sieving is suitable for separating-",
+            "options": [
+              {
+                "label": "a) solids of different shapes",
+                "value": "different shaped solids"
+              },
+              {
+                "label": "b) liquids",
+                "value": "fluid"
+              },
+              {
+                "label": "c) dissolved solids",
+                "value": "dissolved solids"
+              },
+              {
+                "label": "d) gases",
+                "value": "gas"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g7-sci-sep-4",
+            "text": "It is used to separate cream from milk –",
+            "options": [
+              {
+                "label": "a) sedimentation",
+                "value": "sedimentation"
+              },
+              {
+                "label": "b) Centrifugation",
+                "value": "Centrifugation"
+              },
+              {
+                "label": "c) Sublimation",
+                "value": "sublimation"
+              },
+              {
+                "label": "d) Decantation",
+                "value": "subluxation"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-sci-sep-5",
+            "text": "Camphor can be separated from salt by:",
+            "options": [
+              {
+                "label": "a) by sublimation",
+                "value": "sublimation"
+              },
+              {
+                "label": "b) by filtration",
+                "value": "filtration"
+              },
+              {
+                "label": "c) By crystallization",
+                "value": "crystallization"
+              },
+              {
+                "label": "d) by magnetic separation",
+                "value": "magnetic separation"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "Mindful Eating": {
+        "Easy": [
+          {
+            "id": "g7-sci-me-1",
+            "text": "Provides a balanced diet –",
+            "options": [
+              {
+                "label": "a) only carbohydrates",
+                "value": "only carbohydrates"
+              },
+              {
+                "label": "b) All nutrients in proper quantity",
+                "value": "All nutrients in appropriate amounts"
+              },
+              {
+                "label": "c) only protein",
+                "value": "protein only"
+              },
+              {
+                "label": "d) only fat",
+                "value": "only fat"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-sci-me-2",
+            "text": "Most junk foods usually contain—",
+            "options": [
+              {
+                "label": "a) more vitamins and fiber",
+                "value": "more vitamins and fiber"
+              },
+              {
+                "label": "b) less salt and sugar",
+                "value": "less salt and sugar"
+              },
+              {
+                "label": "c) more salt, sugar and fat",
+                "value": "more salt, sugar and fat"
+              },
+              {
+                "label": "d) only protein",
+                "value": "protein only"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g7-sci-me-3",
+            "text": "Mindful eating encourages—",
+            "options": [
+              {
+                "label": "a) eating very fast",
+                "value": "eat too fast"
+              },
+              {
+                "label": "b) ignoring hunger signals",
+                "value": "ignoring hunger signals"
+              },
+              {
+                "label": "c) Focusing on taste and satiety",
+                "value": "Focus on taste and satiety"
+              },
+              {
+                "label": "d) skipping breakfast",
+                "value": "skipping breakfast"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g7-sci-me-4",
+            "text": "Where is fiber mainly found?",
+            "options": [
+              {
+                "label": "a) Whole grains, fruits, vegetables",
+                "value": "whole grains, fruits, vegetables"
+              },
+              {
+                "label": "b) Butter and ghee",
+                "value": "butter and ghee"
+              },
+              {
+                "label": "c) only meat",
+                "value": "only meat"
+              },
+              {
+                "label": "d) soft drinks",
+                "value": "soft drinks"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g7-sci-me-5",
+            "text": "Prevents dehydration –",
+            "options": [
+              {
+                "label": "a) from excess oily food",
+                "value": "excess oily food"
+              },
+              {
+                "label": "b) By drinking enough water",
+                "value": "drinking enough water"
+              },
+              {
+                "label": "c) By not drinking water",
+                "value": "not drinking water"
+              },
+              {
+                "label": "d) only with tea/coffee",
+                "value": "tea/coffee only"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      }
+    },
+    "SSC": {
+      "Family": {
+        "Easy": [
+          {
+            "id": "g7-ssc-fam-1",
+            "text": "What is a nuclear family generally made up of?",
+            "options": [
+              {
+                "label": "a) parents and children",
+                "value": "parents and children"
+              },
+              {
+                "label": "b) Grandparents only",
+                "value": "grandparents only"
+              },
+              {
+                "label": "c) Cousins ​​and neighbors",
+                "value": "cousin and neighbor"
+              },
+              {
+                "label": "d) Only siblings",
+                "value": "only siblings"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g7-ssc-fam-2",
+            "text": "What increases shared responsibilities in the family?",
+            "options": [
+              {
+                "label": "a) conflict",
+                "value": "Conflict"
+              },
+              {
+                "label": "b) cooperation",
+                "value": "Collaboration"
+              },
+              {
+                "label": "c) isolation",
+                "value": "Isolation"
+              },
+              {
+                "label": "d) inequality",
+                "value": "inequality"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-ssc-fam-3",
+            "text": "Shows respect for elders and care for younger children—",
+            "options": [
+              {
+                "label": "a) discipline",
+                "value": "Discipline"
+              },
+              {
+                "label": "b) family values",
+                "value": "family values"
+              },
+              {
+                "label": "c) penalty",
+                "value": "penalty"
+              },
+              {
+                "label": "d) competition",
+                "value": "Competition"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-ssc-fam-4",
+            "text": "Joint family includes-",
+            "options": [
+              {
+                "label": "a) Only parents and one child",
+                "value": "Only parents and one child"
+              },
+              {
+                "label": "b) extended relatives living together",
+                "value": "extended relatives"
+              },
+              {
+                "label": "c) only friends",
+                "value": "only friends"
+              },
+              {
+                "label": "d) Only cousins ​​living separately",
+                "value": "cousins ​​who live apart"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-ssc-fam-5",
+            "text": "How can household chores be better described?",
+            "options": [
+              {
+                "label": "a) only women's work",
+                "value": "women's work only"
+              },
+              {
+                "label": "b) shared work",
+                "value": "shared work"
+              },
+              {
+                "label": "c) only children's work",
+                "value": "only children's work"
+              },
+              {
+                "label": "d) only men's work",
+                "value": "only men's work"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      },
+      "Oceans and Continents": {
+        "Easy": [
+          {
+            "id": "g7-ssc-oc-1",
+            "text": "Which is the largest ocean?",
+            "options": [
+              {
+                "label": "a) Indian Ocean",
+                "value": "Indian Ocean"
+              },
+              {
+                "label": "b) Arctic Ocean",
+                "value": "Arctic Ocean"
+              },
+              {
+                "label": "c) Pacific Ocean",
+                "value": "pacific ocean"
+              },
+              {
+                "label": "d) Atlantic Ocean",
+                "value": "atlantic ocean"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g7-ssc-oc-2",
+            "text": "Generally the number of continents is considered to be –",
+            "options": [
+              {
+                "label": "a) 5",
+                "value": "5"
+              },
+              {
+                "label": "b) 6",
+                "value": "6"
+              },
+              {
+                "label": "c) 7",
+                "value": "7"
+              },
+              {
+                "label": "d) 8",
+                "value": "8"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g7-ssc-oc-3",
+            "text": "By which strait is Africa separated from Europe?",
+            "options": [
+              {
+                "label": "a) Bering Strait",
+                "value": "bering strait"
+              },
+              {
+                "label": "b) Strait of Gibraltar",
+                "value": "Strait of Gibraltar"
+              },
+              {
+                "label": "c) English Channel",
+                "value": "english channel"
+              },
+              {
+                "label": "d) Palk Strait",
+                "value": "palk strait"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-ssc-oc-4",
+            "text": "Which is the smallest ocean?",
+            "options": [
+              {
+                "label": "a) Arctic",
+                "value": "arctic"
+              },
+              {
+                "label": "b) hind",
+                "value": "Hind"
+              },
+              {
+                "label": "c) Atlantic",
+                "value": "atlantic"
+              },
+              {
+                "label": "d) Pacific",
+                "value": "Pacific"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g7-ssc-oc-5",
+            "text": "What other name is Australia known by?",
+            "options": [
+              {
+                "label": "a) island continent",
+                "value": "island continent"
+              },
+              {
+                "label": "b) Snow covered continents",
+                "value": "snow covered continent"
+              },
+              {
+                "label": "c) Green Continent",
+                "value": "green continent"
+              },
+              {
+                "label": "d) desert continent",
+                "value": "desert continent"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "Timeline": {
+        "Easy": [
+          {
+            "id": "g7-ssc-time-1",
+            "text": "Timeline helps us understand—",
+            "options": [
+              {
+                "label": "a) only weather",
+                "value": "only weather"
+              },
+              {
+                "label": "b) sequence of events",
+                "value": "sequence of events"
+              },
+              {
+                "label": "c) Geography only",
+                "value": "geography only"
+              },
+              {
+                "label": "d) only mathematics",
+                "value": "only math"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-ssc-time-2",
+            "text": "BC in date means-",
+            "options": [
+              {
+                "label": "a) before current",
+                "value": "before current"
+              },
+              {
+                "label": "b) Before Christ (BC)",
+                "value": "Before Christ (BC)"
+              },
+              {
+                "label": "c) Binary century",
+                "value": "binary century"
+              },
+              {
+                "label": "d) Between Centuries",
+                "value": "between centuries"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-ssc-time-3",
+            "text": "The full form of AD is-",
+            "options": [
+              {
+                "label": "a) After death",
+                "value": "after death"
+              },
+              {
+                "label": "b) Anno Domini",
+                "value": "anno domini"
+              },
+              {
+                "label": "c) Annual date",
+                "value": "annual date"
+              },
+              {
+                "label": "d) After Decade",
+                "value": "after decade"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-ssc-time-4",
+            "text": "The number of years in a century is—",
+            "options": [
+              {
+                "label": "a) 10 years",
+                "value": "10 years"
+              },
+              {
+                "label": "b) 50 years",
+                "value": "50 years"
+              },
+              {
+                "label": "c) 100 years",
+                "value": "100 years"
+              },
+              {
+                "label": "d) 1000 years",
+                "value": "1000 years"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g7-ssc-time-5",
+            "text": "Events are listed in chronological order—",
+            "options": [
+              {
+                "label": "a) randomly",
+                "value": "random"
+              },
+              {
+                "label": "b) newest to oldest",
+                "value": "newest to oldest"
+              },
+              {
+                "label": "c) oldest to newest",
+                "value": "oldest to newest"
+              },
+              {
+                "label": "d) alphabetically",
+                "value": "alphabetical order"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      }
+    },
+    "Maths": {
+      "Data Handling": {
+        "Easy": [
+          {
+            "id": "g7-math-dh-1",
+            "text": "The mode of 2, 3, 3, 5 is—",
+            "options": [
+              {
+                "label": "a) 2",
+                "value": "2"
+              },
+              {
+                "label": "b) 3",
+                "value": "3"
+              },
+              {
+                "label": "c) 5",
+                "value": "5"
+              },
+              {
+                "label": "d) no mode",
+                "value": "no mode"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-math-dh-2",
+            "text": "The mean of 4, 6, 10 is—",
+            "options": [
+              {
+                "label": "a) 6",
+                "value": "6"
+              },
+              {
+                "label": "b) 7",
+                "value": "7"
+              },
+              {
+                "label": "c) 8",
+                "value": "8"
+              },
+              {
+                "label": "d) 9",
+                "value": "9"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-math-dh-3",
+            "text": "The mean of 1, 2, 9 is—",
+            "options": [
+              {
+                "label": "a) 1",
+                "value": "1"
+              },
+              {
+                "label": "b) 2",
+                "value": "2"
+              },
+              {
+                "label": "c) 9",
+                "value": "9"
+              },
+              {
+                "label": "d) 3",
+                "value": "3"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-math-dh-4",
+            "text": "Bar graph is useful-",
+            "options": [
+              {
+                "label": "a) For qualitative comparison by categories",
+                "value": "qualitative comparison"
+              },
+              {
+                "label": "b) to show the world map",
+                "value": "world map"
+              },
+              {
+                "label": "c) only for angles",
+                "value": "angle only"
+              },
+              {
+                "label": "d) for 3D designs",
+                "value": "3D design"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g7-math-dh-5",
+            "text": "The range of 2, 7, 11 is—",
+            "options": [
+              {
+                "label": "a) 9",
+                "value": "9"
+              },
+              {
+                "label": "b) 11",
+                "value": "11"
+              },
+              {
+                "label": "c) 7",
+                "value": "7"
+              },
+              {
+                "label": "d) 5",
+                "value": "5"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "Symmetry": {
+        "Easy": [
+          {
+            "id": "g7-math-sym-1",
+            "text": "The number of lines of symmetry in a square is –",
+            "options": [
+              {
+                "label": "a) 2",
+                "value": "2"
+              },
+              {
+                "label": "b) 3",
+                "value": "3"
+              },
+              {
+                "label": "c) 4",
+                "value": "4"
+              },
+              {
+                "label": "d) 8",
+                "value": "8"
+              }
+            ],
+            "correctIndex": 3
+          },
+          {
+            "id": "g7-math-sym-2",
+            "text": "In the circle-",
+            "options": [
+              {
+                "label": "a) no line of symmetry",
+                "value": "no line of symmetry"
+              },
+              {
+                "label": "b) ok 2",
+                "value": "ok 2"
+              },
+              {
+                "label": "c) exactly 4",
+                "value": "ok 4"
+              },
+              {
+                "label": "d) infinite lines of symmetry",
+                "value": "infinite lines of symmetry"
+              }
+            ],
+            "correctIndex": 3
+          },
+          {
+            "id": "g7-math-sym-3",
+            "text": "What else is reflection symmetry called?",
+            "options": [
+              {
+                "label": "a) Rotational symmetry",
+                "value": "rotational symmetry"
+              },
+              {
+                "label": "b) line symmetry",
+                "value": "line symmetry"
+              },
+              {
+                "label": "c) point symmetry",
+                "value": "point symmetry"
+              },
+              {
+                "label": "d) no symmetry",
+                "value": "no symmetry"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-math-sym-4",
+            "text": "The order of rotational symmetry of an equilateral triangle is—",
+            "options": [
+              {
+                "label": "a) 1",
+                "value": "1"
+              },
+              {
+                "label": "b) 2",
+                "value": "2"
+              },
+              {
+                "label": "c) 3",
+                "value": "3"
+              },
+              {
+                "label": "d) 6",
+                "value": "6"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g7-math-sym-5",
+            "text": "The number of lines of symmetry in a rectangle is-",
+            "options": [
+              {
+                "label": "a) 2",
+                "value": "2"
+              },
+              {
+                "label": "b) 4",
+                "value": "4"
+              },
+              {
+                "label": "c) 1",
+                "value": "1"
+              },
+              {
+                "label": "d) 0",
+                "value": "0"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "Lines and Angles": {
+        "Easy": [
+          {
+            "id": "g7-math-la-1",
+            "text": "The sum of angles on a straight line is—",
+            "options": [
+              {
+                "label": "a) 90°",
+                "value": "90°"
+              },
+              {
+                "label": "b) 120°",
+                "value": "120°"
+              },
+              {
+                "label": "c) 150°",
+                "value": "150°"
+              },
+              {
+                "label": "d) 180°",
+                "value": "180°"
+              }
+            ],
+            "correctIndex": 3
+          },
+          {
+            "id": "g7-math-la-2",
+            "text": "Vertically opposite angles—",
+            "options": [
+              {
+                "label": "a) are equal",
+                "value": "Similar"
+              },
+              {
+                "label": "b) are supplementary",
+                "value": "supplement"
+              },
+              {
+                "label": "c) are complementary",
+                "value": "Supplement"
+              },
+              {
+                "label": "d) are unequal",
+                "value": "uneven"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g7-math-la-3",
+            "text": "Angles smaller than 90° are called –",
+            "options": [
+              {
+                "label": "a) reflex",
+                "value": "reflex"
+              },
+              {
+                "label": "b) obtuse",
+                "value": "gross"
+              },
+              {
+                "label": "c) acute",
+                "value": "sharp"
+              },
+              {
+                "label": "d) straight",
+                "value": "right angle"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g7-math-la-4",
+            "text": "If two lines never meet, they are called—",
+            "options": [
+              {
+                "label": "a) intersecting",
+                "value": "normal"
+              },
+              {
+                "label": "b) parallel",
+                "value": "parallel"
+              },
+              {
+                "label": "c) perpendicular",
+                "value": "perpendicular"
+              },
+              {
+                "label": "d) skew",
+                "value": "oblique"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g7-math-la-5",
+            "text": "The value of right angle is-",
+            "options": [
+              {
+                "label": "a) 30°",
+                "value": "30°"
+              },
+              {
+                "label": "b) 45°",
+                "value": "45°"
+              },
+              {
+                "label": "c) 60°",
+                "value": "60°"
+              },
+              {
+                "label": "d) 90°",
+                "value": "90°"
+              }
+            ],
+            "correctIndex": 3
+          }
+        ]
+      }
+    }
+  },
+  "8": {
+    "Science": {
+      "Electricity": {
+        "Easy": [
+          {
+            "id": "g8-sci-ele-1",
+            "text": "The SI unit of electric current is—",
+            "options": [
+              {
+                "label": "a) volt",
+                "value": "volt"
+              },
+              {
+                "label": "b) Ohm",
+                "value": "Om"
+              },
+              {
+                "label": "c) ampere",
+                "value": "ampere"
+              },
+              {
+                "label": "d) Coulomb",
+                "value": "coulomb"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-sci-ele-2",
+            "text": "The instrument used to measure current is—",
+            "options": [
+              {
+                "label": "a) voltmeter",
+                "value": "voltmeter"
+              },
+              {
+                "label": "b) Ammeter",
+                "value": "ammeter"
+              },
+              {
+                "label": "c) Ohmmeter",
+                "value": "ohmmeter"
+              },
+              {
+                "label": "d) barometer",
+                "value": "barometer"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-sci-ele-3",
+            "text": "In conductor—",
+            "options": [
+              {
+                "label": "a) charge does not flow",
+                "value": "no charge flow"
+              },
+              {
+                "label": "b) charge flows easily",
+                "value": "charge flows easily"
+              },
+              {
+                "label": "c) only heat flows",
+                "value": "only heat"
+              },
+              {
+                "label": "d) only light flows",
+                "value": "only light"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-sci-ele-4",
+            "text": "The unit of resistance is—",
+            "options": [
+              {
+                "label": "a) ampere",
+                "value": "ampere"
+              },
+              {
+                "label": "b) volt",
+                "value": "volt"
+              },
+              {
+                "label": "c) Ohm",
+                "value": "Om"
+              },
+              {
+                "label": "d) watt",
+                "value": "watt"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-sci-ele-5",
+            "text": "On what principle does an electrical fuse work?",
+            "options": [
+              {
+                "label": "a) magnetism",
+                "value": "magnetism"
+              },
+              {
+                "label": "b) overheating/melting",
+                "value": "overheating/melting"
+              },
+              {
+                "label": "c) radiation",
+                "value": "radiation"
+              },
+              {
+                "label": "d) cooling",
+                "value": "cooling"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      },
+      "Life Processes in Plants": {
+        "Easy": [
+          {
+            "id": "g8-sci-pl-1",
+            "text": "The process of making plant food is—",
+            "options": [
+              {
+                "label": "a) respiration",
+                "value": "respiration"
+              },
+              {
+                "label": "b) Photosynthesis",
+                "value": "photosynthesis"
+              },
+              {
+                "label": "c) transpiration",
+                "value": "transpiration"
+              },
+              {
+                "label": "d) digestion",
+                "value": "digestion"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-sci-pl-2",
+            "text": "What are stomata mainly for?",
+            "options": [
+              {
+                "label": "a) water absorption",
+                "value": "water absorption"
+              },
+              {
+                "label": "b) exchange of gases",
+                "value": "exchange of gases"
+              },
+              {
+                "label": "c) transportation of food",
+                "value": "transportation of food"
+              },
+              {
+                "label": "d) seed formation",
+                "value": "spore forming"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-sci-pl-3",
+            "text": "What does xylem transport?",
+            "options": [
+              {
+                "label": "a) food",
+                "value": "Meal"
+              },
+              {
+                "label": "b) Water and minerals",
+                "value": "water and minerals"
+              },
+              {
+                "label": "c) hormones",
+                "value": "hormones"
+              },
+              {
+                "label": "d) only oxygen",
+                "value": "only oxygen"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-sci-pl-4",
+            "text": "The green pigment in leaves is called –",
+            "options": [
+              {
+                "label": "a) chlorophyll",
+                "value": "chlorophyll"
+              },
+              {
+                "label": "b) hemoglobin",
+                "value": "hemoglobin"
+              },
+              {
+                "label": "c) melanin",
+                "value": "melanin"
+              },
+              {
+                "label": "d) carotene",
+                "value": "carotene"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g8-sci-pl-5",
+            "text": "Transpiration is—",
+            "options": [
+              {
+                "label": "a) Loss of water vapor from leaves",
+                "value": "loss of water vapor from leaves"
+              },
+              {
+                "label": "b) absorption of CO₂",
+                "value": "CO₂ absorption"
+              },
+              {
+                "label": "c) production of oxygen",
+                "value": "production of oxygen"
+              },
+              {
+                "label": "d) decomposition of glucose",
+                "value": "glucose breakdown"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "Life Processes in Animals": {
+        "Easy": [
+          {
+            "id": "g8-sci-an-1",
+            "text": "The basic unit of life is called-",
+            "options": [
+              {
+                "label": "a) tissue",
+                "value": "tissue"
+              },
+              {
+                "label": "b) organ",
+                "value": "Organ"
+              },
+              {
+                "label": "c) cell",
+                "value": "cell"
+              },
+              {
+                "label": "d) organ system",
+                "value": "organ system"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-sci-an-2",
+            "text": "Oxygen is mainly transported in humans by what?",
+            "options": [
+              {
+                "label": "a) plasma",
+                "value": "plasma"
+              },
+              {
+                "label": "b) RBC (Hemoglobin)",
+                "value": "RBC (hemoglobin)"
+              },
+              {
+                "label": "c) WBC",
+                "value": "WBC"
+              },
+              {
+                "label": "d) platelets",
+                "value": "platelets"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-sci-an-3",
+            "text": "Where does digestion begin?",
+            "options": [
+              {
+                "label": "a) stomach",
+                "value": "stomach"
+              },
+              {
+                "label": "b) mouth",
+                "value": "mouth"
+              },
+              {
+                "label": "c) small intestine",
+                "value": "small intestine"
+              },
+              {
+                "label": "d) large intestine",
+                "value": "large intestine"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-sci-an-4",
+            "text": "Excretion in humans occurs mainly through?",
+            "options": [
+              {
+                "label": "a) lungs",
+                "value": "lungs"
+              },
+              {
+                "label": "b) skin",
+                "value": "skin"
+              },
+              {
+                "label": "c) kidney",
+                "value": "kidney"
+              },
+              {
+                "label": "d) liver",
+                "value": "Liver"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-sci-an-5",
+            "text": "The organ that pumps blood throughout the body—",
+            "options": [
+              {
+                "label": "a) brain",
+                "value": "brain"
+              },
+              {
+                "label": "b) liver",
+                "value": "Liver"
+              },
+              {
+                "label": "c) heart",
+                "value": "Heart"
+              },
+              {
+                "label": "d) lungs",
+                "value": "lungs"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      }
+    },
+    "SSC": {
+      "Empires": {
+        "Easy": [
+          {
+            "id": "g8-ssc-emp-1",
+            "text": "What is generally called an empire?",
+            "options": [
+              {
+                "label": "a) small local governments",
+                "value": "small local government"
+              },
+              {
+                "label": "b) Large area under one ruler",
+                "value": "large area under one ruler"
+              },
+              {
+                "label": "c) democracy",
+                "value": "Democracy"
+              },
+              {
+                "label": "d) City-state only",
+                "value": "city-state only"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-emp-2",
+            "text": "The capitals of empires were chosen—",
+            "options": [
+              {
+                "label": "a) only for beauty",
+                "value": "only beauty"
+              },
+              {
+                "label": "b) Due to strategic, economic and political reasons",
+                "value": "Strategic, economic and political reasons"
+              },
+              {
+                "label": "c) due to irregular elections",
+                "value": "irregular elections"
+              },
+              {
+                "label": "d) only for religious reasons",
+                "value": "religious reasons only"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-emp-3",
+            "text": "What did the imperial rule generally maintain?",
+            "options": [
+              {
+                "label": "a) Roads and trade",
+                "value": "Roads and trade"
+              },
+              {
+                "label": "b) only war",
+                "value": "only war"
+              },
+              {
+                "label": "c) Temple only",
+                "value": "only temple"
+              },
+              {
+                "label": "d) only farms",
+                "value": "farm only"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g8-ssc-emp-4",
+            "text": "How does the empire expand through annexation?",
+            "options": [
+              {
+                "label": "a) only through diplomacy",
+                "value": "only diplomacy"
+              },
+              {
+                "label": "b) By adding new territories",
+                "value": "by adding new territories"
+              },
+              {
+                "label": "c) only by reducing taxes",
+                "value": "just by reducing taxes"
+              },
+              {
+                "label": "d) Only by building schools",
+                "value": "school only"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-emp-5",
+            "text": "Sources for the study of empires include—",
+            "options": [
+              {
+                "label": "a) Coins and inscriptions",
+                "value": "coins and inscriptions"
+              },
+              {
+                "label": "b) only fossils",
+                "value": "only fossils"
+              },
+              {
+                "label": "c) satellite only",
+                "value": "satellite only"
+              },
+              {
+                "label": "d) only fantasy literature",
+                "value": "only fantasy literature"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "Gupta Empire": {
+        "Easy": [
+          {
+            "id": "g8-ssc-gupta-1",
+            "text": "By what name is the Gupta period often known?",
+            "options": [
+              {
+                "label": "a) Bronze Age",
+                "value": "bronze Age"
+              },
+              {
+                "label": "b) Golden Age of India",
+                "value": "golden age of india"
+              },
+              {
+                "label": "c) Stone Age",
+                "value": "stone age"
+              },
+              {
+                "label": "d) Industrial Age",
+                "value": "industrial age"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-gupta-2",
+            "text": "A famous Gupta ruler—",
+            "options": [
+              {
+                "label": "a) Chandragupta II (Vikramaditya)",
+                "value": "Chandragupta II (Vikramaditya)"
+              },
+              {
+                "label": "b) Ashoka",
+                "value": "Ashoka"
+              },
+              {
+                "label": "c) joy",
+                "value": "Joy"
+              },
+              {
+                "label": "d) Alauddin Khilji",
+                "value": "Alauddin Khilji"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g8-ssc-gupta-3",
+            "text": "Famous universities in the Gupta period—",
+            "options": [
+              {
+                "label": "a) Nalanda",
+                "value": "Nalanda"
+              },
+              {
+                "label": "b) Oxford",
+                "value": "oxford"
+              },
+              {
+                "label": "c) Taxila (in Europe)",
+                "value": "Taxila (Europe)"
+              },
+              {
+                "label": "d) Beijing University",
+                "value": "Beijing University"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g8-ssc-gupta-4",
+            "text": "The coins of the Gupta period are important because they—",
+            "options": [
+              {
+                "label": "a) give climate related information",
+                "value": "climate information"
+              },
+              {
+                "label": "b) Give political and economic information",
+                "value": "political and economic information"
+              },
+              {
+                "label": "c) are only decorations",
+                "value": "decoration only"
+              },
+              {
+                "label": "d) show latitude and longitude",
+                "value": "latitude Longitude"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-gupta-5",
+            "text": "In which period did Kalidas live?",
+            "options": [
+              {
+                "label": "a) Maurya period",
+                "value": "maurya period"
+              },
+              {
+                "label": "b) Gupta period",
+                "value": "Gupta period"
+              },
+              {
+                "label": "c) Mughal period",
+                "value": "Mughal period"
+              },
+              {
+                "label": "d) Sultanate period",
+                "value": "Sultanate period"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      },
+      "Understanding Markets": {
+        "Easy": [
+          {
+            "id": "g8-ssc-mkt-1",
+            "text": "Weekly market is usually-",
+            "options": [
+              {
+                "label": "a) permanent shops",
+                "value": "permanent shops"
+              },
+              {
+                "label": "b) Temporary stall on fixed day",
+                "value": "temporary stall on certain days"
+              },
+              {
+                "label": "c) online only",
+                "value": "Online only"
+              },
+              {
+                "label": "d) factory outlet",
+                "value": "factory outlet"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-mkt-2",
+            "text": "Retailers buy—",
+            "options": [
+              {
+                "label": "a) from consumers",
+                "value": "consumer"
+              },
+              {
+                "label": "b) From wholesalers",
+                "value": "wholesaler"
+              },
+              {
+                "label": "c) from banks",
+                "value": "bank"
+              },
+              {
+                "label": "d) from schools",
+                "value": "School"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-mkt-3",
+            "text": "MRP on a product means—",
+            "options": [
+              {
+                "label": "a) Minimum Retail Price",
+                "value": "minimum retail price"
+              },
+              {
+                "label": "b) maximum retail price",
+                "value": "maximum retail price"
+              },
+              {
+                "label": "c) Manufacturing Rate Price",
+                "value": "manufacturing rate price"
+              },
+              {
+                "label": "d) Market Rate Percentile",
+                "value": "market rate percentile"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-ssc-mkt-4",
+            "text": "Fair-trade encourages—",
+            "options": [
+              {
+                "label": "a) exploitation",
+                "value": "Exploitation"
+              },
+              {
+                "label": "b) child labor",
+                "value": "Child labour"
+              },
+              {
+                "label": "c) Ethical pricing to producers",
+                "value": "Ethical pricing to producers"
+              },
+              {
+                "label": "d) garbage production",
+                "value": "garbage production"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-ssc-mkt-5",
+            "text": "Online marketplaces add—",
+            "options": [
+              {
+                "label": "a) only producers",
+                "value": "only producer"
+              },
+              {
+                "label": "b) consumers only",
+                "value": "consumer only"
+              },
+              {
+                "label": "c) Producer and consumer digitally",
+                "value": "producer and consumer digitally"
+              },
+              {
+                "label": "d) only transporter",
+                "value": "only carrier"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      }
+    },
+    "Maths": {
+      "Expressions using Letters": {
+        "Easy": [
+          {
+            "id": "g8-math-exp-1",
+            "text": "What is x in 3x + 5?",
+            "options": [
+              {
+                "label": "a) constant",
+                "value": "constant number"
+              },
+              {
+                "label": "b) variable",
+                "value": "Ambulatory"
+              },
+              {
+                "label": "c) operator",
+                "value": "operation symbol"
+              },
+              {
+                "label": "d) exponent",
+                "value": "exponential"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-math-exp-2",
+            "text": "Simplify: 2x + 3x =",
+            "options": [
+              {
+                "label": "a) 5",
+                "value": "5"
+              },
+              {
+                "label": "b) 6x",
+                "value": "6x"
+              },
+              {
+                "label": "c) 5x",
+                "value": "5x"
+              },
+              {
+                "label": "d) x^5",
+                "value": "x^5"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-math-exp-3",
+            "text": "The coefficient of y in 7y is—",
+            "options": [
+              {
+                "label": "a) 1",
+                "value": "1"
+              },
+              {
+                "label": "b) 7",
+                "value": "7"
+              },
+              {
+                "label": "c) y",
+                "value": "y"
+              },
+              {
+                "label": "d) 0",
+                "value": "0"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-math-exp-4",
+            "text": "When a = 3, the value of 4a is –",
+            "options": [
+              {
+                "label": "a) 7",
+                "value": "7"
+              },
+              {
+                "label": "b) 12",
+                "value": "12"
+              },
+              {
+                "label": "c) 1/12",
+                "value": "1/12"
+              },
+              {
+                "label": "d) 43",
+                "value": "43"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-math-exp-5",
+            "text": "Like terms are those which have similar—",
+            "options": [
+              {
+                "label": "a) numerical value",
+                "value": "numerical value"
+              },
+              {
+                "label": "b) numbers and their powers",
+                "value": "move and kill"
+              },
+              {
+                "label": "c) mere indication",
+                "value": "mere hint"
+              },
+              {
+                "label": "d) only exponents",
+                "value": "exponent only"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      },
+      "Fractions": {
+        "Easy": [
+          {
+            "id": "g8-math-fr-1",
+            "text": "2/3 + 1/6 =",
+            "options": [
+              {
+                "label": "a) 1/2",
+                "value": "1/2"
+              },
+              {
+                "label": "b) 5/6",
+                "value": "5/6"
+              },
+              {
+                "label": "c) 2/9",
+                "value": "2/9"
+              },
+              {
+                "label": "d) 3/6",
+                "value": "3/6"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-math-fr-2",
+            "text": "3/4 of 20 is—",
+            "options": [
+              {
+                "label": "a) 5",
+                "value": "5"
+              },
+              {
+                "label": "b) 10",
+                "value": "10"
+              },
+              {
+                "label": "c) 15",
+                "value": "15"
+              },
+              {
+                "label": "d) 20",
+                "value": "20"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-math-fr-3",
+            "text": "The fraction in which the numerator is less than the denominator is called –",
+            "options": [
+              {
+                "label": "a) improper",
+                "value": "impure fraction"
+              },
+              {
+                "label": "b) mixed",
+                "value": "mixed fraction"
+              },
+              {
+                "label": "c) pure",
+                "value": "pure fraction"
+              },
+              {
+                "label": "d) whole",
+                "value": "full"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-math-fr-4",
+            "text": "The fraction equivalent to 0.25 is—",
+            "options": [
+              {
+                "label": "a) 1/2",
+                "value": "1/2"
+              },
+              {
+                "label": "b) 1/3",
+                "value": "1/3"
+              },
+              {
+                "label": "c) 1/4",
+                "value": "1/4"
+              },
+              {
+                "label": "d) 1/5",
+                "value": "1/5"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-math-fr-5",
+            "text": "The reciprocal of 5/8 is—",
+            "options": [
+              {
+                "label": "a) 5/8",
+                "value": "5/8"
+              },
+              {
+                "label": "b) 8/5",
+                "value": "8/5"
+              },
+              {
+                "label": "c) −5/8",
+                "value": "−5/8"
+              },
+              {
+                "label": "d) 5/−8",
+                "value": "5/−8"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      },
+      "Number Play": {
+        "Easy": [
+          {
+            "id": "g8-math-np-1",
+            "text": "A prime number consists of –",
+            "options": [
+              {
+                "label": "a) 1 factor",
+                "value": "1 factor"
+              },
+              {
+                "label": "b) 2 factors",
+                "value": "2 factors"
+              },
+              {
+                "label": "c) 3 factors",
+                "value": "3 factors"
+              },
+              {
+                "label": "d) 4 factors",
+                "value": "4 factors"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g8-math-np-2",
+            "text": "LCM of 6 and 8 is—",
+            "options": [
+              {
+                "label": "a) 12",
+                "value": "12"
+              },
+              {
+                "label": "b) 16",
+                "value": "16"
+              },
+              {
+                "label": "c) 24",
+                "value": "24"
+              },
+              {
+                "label": "d) 48",
+                "value": "48"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g8-math-np-3",
+            "text": "HCF of 12 and 18 is—",
+            "options": [
+              {
+                "label": "a) 2",
+                "value": "2"
+              },
+              {
+                "label": "b) 3",
+                "value": "3"
+              },
+              {
+                "label": "c) 4",
+                "value": "4"
+              },
+              {
+                "label": "d) 6",
+                "value": "6"
+              }
+            ],
+            "correctIndex": 3
+          },
+          {
+            "id": "g8-math-np-4",
+            "text": "Multiples of 9 are checked by which value of sum of digits?",
+            "options": [
+              {
+                "label": "a) 9",
+                "value": "9"
+              },
+              {
+                "label": "b) 8",
+                "value": "8"
+              },
+              {
+                "label": "c) 7",
+                "value": "7"
+              },
+              {
+                "label": "d) 6",
+                "value": "6"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g8-math-np-5",
+            "text": "Even numbers are divisible by-",
+            "options": [
+              {
+                "label": "a) from 3",
+                "value": "3"
+              },
+              {
+                "label": "b) from 4",
+                "value": "4"
+              },
+              {
+                "label": "c) from 2",
+                "value": "2"
+              },
+              {
+                "label": "d) from 5",
+                "value": "5"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      }
+    }
+  },
+  "9": {
+    "Science": {
+      "Motion": {
+        "Easy": [
+          {
+            "id": "g9-sci-mot-1",
+            "text": "What is the SI unit of velocity?",
+            "options": [
+              {
+                "label": "a) m/s²",
+                "value": "m/s²"
+              },
+              {
+                "label": "b) m/s",
+                "value": "m/s"
+              },
+              {
+                "label": "c) km",
+                "value": "km"
+              },
+              {
+                "label": "d) m",
+                "value": "m"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-sci-mot-2",
+            "text": "What does the area below the velocity-time graph represent?",
+            "options": [
+              {
+                "label": "a) acceleration",
+                "value": "acceleration"
+              },
+              {
+                "label": "b) displacement",
+                "value": "displacement"
+              },
+              {
+                "label": "c) jerk",
+                "value": "jerk"
+              },
+              {
+                "label": "d) power",
+                "value": "Power"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-sci-mot-3",
+            "text": "Acceleration in uniform motion occurs-",
+            "options": [
+              {
+                "label": "a) zero",
+                "value": "Zero"
+              },
+              {
+                "label": "b) fixed and different from zero",
+                "value": "fixed and different from zero"
+              },
+              {
+                "label": "c) increasing",
+                "value": "a growing"
+              },
+              {
+                "label": "d) decreasing",
+                "value": "by reducing"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-sci-mot-4",
+            "text": "To get maximum distance on flat ground, the angle of projection should be –",
+            "options": [
+              {
+                "label": "a) 30°",
+                "value": "30°"
+              },
+              {
+                "label": "b) 45°",
+                "value": "45°"
+              },
+              {
+                "label": "c) 60°",
+                "value": "60°"
+              },
+              {
+                "label": "d) 90°",
+                "value": "90°"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-sci-mot-5",
+            "text": "Neglecting air resistance, the path of the projectile is –",
+            "options": [
+              {
+                "label": "a) circle",
+                "value": "circle"
+              },
+              {
+                "label": "b) straight line",
+                "value": "straight line"
+              },
+              {
+                "label": "c) parabola",
+                "value": "parabola"
+              },
+              {
+                "label": "d) ellipse",
+                "value": "ellipse"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      },
+      "Is Matter Around Us Pure": {
+        "Easy": [
+          {
+            "id": "g9-sci-pure-1",
+            "text": "What type of mixture is solution?",
+            "options": [
+              {
+                "label": "a) heterogeneous mixture",
+                "value": "heterogeneous mixture"
+              },
+              {
+                "label": "b) homogeneous mixture",
+                "value": "homogeneous mixture"
+              },
+              {
+                "label": "c) colloid",
+                "value": "colloid"
+              },
+              {
+                "label": "d) suspension",
+                "value": "suspension"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-sci-pure-2",
+            "text": "What is Tyndall effect visible in?",
+            "options": [
+              {
+                "label": "a) in true solutions",
+                "value": "true solution"
+              },
+              {
+                "label": "b) in colloid",
+                "value": "colloid"
+              },
+              {
+                "label": "c) in all mixtures",
+                "value": "all mix"
+              },
+              {
+                "label": "d) in pure substances",
+                "value": "pure substance"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-sci-pure-3",
+            "text": "The method of separating insoluble solid from liquid is-",
+            "options": [
+              {
+                "label": "a) Filtration",
+                "value": "filtration"
+              },
+              {
+                "label": "b) evaporation",
+                "value": "evaporation"
+              },
+              {
+                "label": "c) distillation",
+                "value": "distillation"
+              },
+              {
+                "label": "d) Chromatography",
+                "value": "Chromatography"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-sci-pure-4",
+            "text": "Distillation is best to separate—",
+            "options": [
+              {
+                "label": "a) sand and water",
+                "value": "sand and water"
+              },
+              {
+                "label": "b) oil and water",
+                "value": "oil and water"
+              },
+              {
+                "label": "c) Alcohol and water (miscible liquids)",
+                "value": "alcohol and water"
+              },
+              {
+                "label": "d) Iron filings and sulfur",
+                "value": "iron filings and sulfur"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-sci-pure-5",
+            "text": "The component which is present in greater quantity in the solution is called –",
+            "options": [
+              {
+                "label": "a) solute",
+                "value": "solute"
+              },
+              {
+                "label": "b) solvent",
+                "value": "solvent"
+              },
+              {
+                "label": "c) remains",
+                "value": "remains"
+              },
+              {
+                "label": "d) precipitate",
+                "value": "precipitate"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      },
+      "Cell Fundamental Unit of Life": {
+        "Easy": [
+          {
+            "id": "g9-sci-cell-1",
+            "text": "The 'powerhouse' of the cell is called—",
+            "options": [
+              {
+                "label": "a) nucleus",
+                "value": "nucleus"
+              },
+              {
+                "label": "b) ribosome",
+                "value": "ribosome"
+              },
+              {
+                "label": "c) mitochondria",
+                "value": "mitochondria"
+              },
+              {
+                "label": "d) chloroplast",
+                "value": "chloroplast"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-sci-cell-2",
+            "text": "What is cell wall found in?",
+            "options": [
+              {
+                "label": "a) only in animal cells",
+                "value": "animal cells only"
+              },
+              {
+                "label": "b) only in plant cells",
+                "value": "plant cells only"
+              },
+              {
+                "label": "c) In both plant and animal cells",
+                "value": "Both"
+              },
+              {
+                "label": "d) not in any",
+                "value": "not in any"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-sci-cell-3",
+            "text": "Ribosome is the synthesis site of?",
+            "options": [
+              {
+                "label": "a) protein synthesis",
+                "value": "protein"
+              },
+              {
+                "label": "b) fat synthesis",
+                "value": "fat"
+              },
+              {
+                "label": "c) DNA replication",
+                "value": "DNA"
+              },
+              {
+                "label": "d) photosynthesis",
+                "value": "photosynthesis"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-sci-cell-4",
+            "text": "What is osmosis?",
+            "options": [
+              {
+                "label": "a) diffusion of any gas",
+                "value": "diffusion of any gas"
+              },
+              {
+                "label": "b) movement of solute across the membrane",
+                "value": "movement of solute"
+              },
+              {
+                "label": "c) movement of water across a semipermeable membrane",
+                "value": "movement of water"
+              },
+              {
+                "label": "d) mass flow of fluid under pressure",
+                "value": "flow under pressure"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-sci-cell-5",
+            "text": "Which organelle controls the functions of the cell?",
+            "options": [
+              {
+                "label": "a) nucleus",
+                "value": "nucleus"
+              },
+              {
+                "label": "b) Golgi apparatus",
+                "value": "Golgi apparatus"
+              },
+              {
+                "label": "c) lysosome",
+                "value": "lysosome"
+              },
+              {
+                "label": "d) Vacuole",
+                "value": "vacuole"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      }
+    },
+    "SSC": {
+      "French Revolution": {
+        "Easy": [
+          {
+            "id": "g9-ssc-fr-1",
+            "text": "When was the Bastille stormed?",
+            "options": [
+              {
+                "label": "a) 14 July 1789",
+                "value": "14 July 1789"
+              },
+              {
+                "label": "b) 26 January 1789",
+                "value": "26 January 1789"
+              },
+              {
+                "label": "c) 4 July 1789",
+                "value": "4 July 1789"
+              },
+              {
+                "label": "d) 5 May 1789",
+                "value": "5 May 1789"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-ssc-fr-2",
+            "text": "Who paid the highest taxes before the revolution?",
+            "options": [
+              {
+                "label": "a) Clergy",
+                "value": "priest"
+              },
+              {
+                "label": "b) Nobility",
+                "value": "knight"
+              },
+              {
+                "label": "c) Common people (third class)",
+                "value": "common man"
+              },
+              {
+                "label": "d) king",
+                "value": "King"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-ssc-fr-3",
+            "text": "Who was the leader associated with the 'Reign of Terror'?",
+            "options": [
+              {
+                "label": "a) Lafayette",
+                "value": "lafayette"
+              },
+              {
+                "label": "b) Robespierre",
+                "value": "robespierre"
+              },
+              {
+                "label": "c) teeth",
+                "value": "teeth"
+              },
+              {
+                "label": "d) Napoleon",
+                "value": "napoleon"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-fr-4",
+            "text": "What was the guillotine used for?",
+            "options": [
+              {
+                "label": "a) to measure grains",
+                "value": "measuring grain"
+              },
+              {
+                "label": "b) To print news",
+                "value": "print news"
+              },
+              {
+                "label": "c) For public execution",
+                "value": "public execution"
+              },
+              {
+                "label": "d) To mint coins",
+                "value": "mint coins"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-ssc-fr-5",
+            "text": "When was the “Declaration of the Rights of Man and the Citizen” approved?",
+            "options": [
+              {
+                "label": "a) 1787",
+                "value": "1787"
+              },
+              {
+                "label": "b) 1788",
+                "value": "1788"
+              },
+              {
+                "label": "c) 1789",
+                "value": "1789"
+              },
+              {
+                "label": "d) 1791",
+                "value": "1791"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      },
+      "India Size and Location": {
+        "Easy": [
+          {
+            "id": "g9-ssc-size-1",
+            "text": "In which hemisphere is India located?",
+            "options": [
+              {
+                "label": "a) North and West",
+                "value": "north and west"
+              },
+              {
+                "label": "b) North and East",
+                "value": "North and East"
+              },
+              {
+                "label": "c) South and East",
+                "value": "south and east"
+              },
+              {
+                "label": "d) South and West",
+                "value": "south and west"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-size-2",
+            "text": "The Standard Meridian of India is—",
+            "options": [
+              {
+                "label": "a) 82°30′ E.",
+                "value": "82°30′E"
+              },
+              {
+                "label": "b) 75° E.",
+                "value": "75°E"
+              },
+              {
+                "label": "c) 90° E.",
+                "value": "90°E"
+              },
+              {
+                "label": "d) 70° E.",
+                "value": "70° E"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-ssc-size-3",
+            "text": "Which latitude line divides India into two almost equal parts?",
+            "options": [
+              {
+                "label": "a) equator",
+                "value": "equator"
+              },
+              {
+                "label": "b) Tropic of Cancer",
+                "value": "Tropic of Cancer"
+              },
+              {
+                "label": "c) Tropic of Capricorn",
+                "value": "Tropic of Capricorn"
+              },
+              {
+                "label": "d) Arctic Circle",
+                "value": "arctic circle"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-size-4",
+            "text": "Which ocean is south of India?",
+            "options": [
+              {
+                "label": "a) Pacific Ocean",
+                "value": "pacific ocean"
+              },
+              {
+                "label": "b) Atlantic Ocean",
+                "value": "atlantic ocean"
+              },
+              {
+                "label": "c) Indian Ocean",
+                "value": "Indian Ocean"
+              },
+              {
+                "label": "d) Arctic Ocean",
+                "value": "Arctic Ocean"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-ssc-size-5",
+            "text": "What separates Sri Lanka from India?",
+            "options": [
+              {
+                "label": "a) Palk Strait and Gulf of Mannar",
+                "value": "Palk Strait and Gulf of Mannar"
+              },
+              {
+                "label": "b) Strait of Malacca",
+                "value": "strait of malacca"
+              },
+              {
+                "label": "c) Strait of Hormuz",
+                "value": "strait of hormuz"
+              },
+              {
+                "label": "d) Sunda Strait",
+                "value": "Sunda Strait"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "What is Democracy Why Democracy": {
+        "Easy": [
+          {
+            "id": "g9-ssc-dem-1",
+            "text": "An important feature of democracy is-",
+            "options": [
+              {
+                "label": "a) hereditary ruler",
+                "value": "hereditary ruler"
+              },
+              {
+                "label": "b) Free and fair elections",
+                "value": "free and fair elections"
+              },
+              {
+                "label": "c) lack of law",
+                "value": "lack of law"
+              },
+              {
+                "label": "d) lack of rights",
+                "value": "lack of rights"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-dem-2",
+            "text": "Who has the power to take final decisions in a democracy?",
+            "options": [
+              {
+                "label": "a) army",
+                "value": "Army"
+              },
+              {
+                "label": "b) hereditary king",
+                "value": "hereditary king"
+              },
+              {
+                "label": "c) elected representatives",
+                "value": "elected representative"
+              },
+              {
+                "label": "d) religious head",
+                "value": "religious head"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-ssc-dem-3",
+            "text": "Universal adult franchise means—",
+            "options": [
+              {
+                "label": "a) Only property holders should vote",
+                "value": "Only property holders can vote"
+              },
+              {
+                "label": "b) All adult citizens can vote",
+                "value": "All adult citizens can vote"
+              },
+              {
+                "label": "c) Only government employees should vote",
+                "value": "Only government employees should vote"
+              },
+              {
+                "label": "d) only men vote",
+                "value": "only men vote"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-dem-4",
+            "text": "One quality of democracy is that-",
+            "options": [
+              {
+                "label": "a) ignores public opinion",
+                "value": "Ignoring public opinion"
+              },
+              {
+                "label": "b) Discussion increases the quality of decisions",
+                "value": "quality through deliberation"
+              },
+              {
+                "label": "c) promotes dictatorship",
+                "value": "promote dictatorship"
+              },
+              {
+                "label": "d) prevents accountability",
+                "value": "prevents accountability"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-dem-5",
+            "text": "What is the definition of “Government of the people, by the people, for the people”?",
+            "options": [
+              {
+                "label": "a) Autocracy",
+                "value": "despotism"
+              },
+              {
+                "label": "b) monarchy",
+                "value": "monarchy"
+              },
+              {
+                "label": "c) democracy",
+                "value": "Democracy"
+              },
+              {
+                "label": "d) oligarchy",
+                "value": "oligarchy"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      },
+      "The Story of Village Palampur": {
+        "Easy": [
+          {
+            "id": "g9-ssc-pal-1",
+            "text": "What is the main production activity in Palampur?",
+            "options": [
+              {
+                "label": "a) farming",
+                "value": "Farming"
+              },
+              {
+                "label": "b) mining",
+                "value": "mining"
+              },
+              {
+                "label": "c) shipbuilding",
+                "value": "shipbuilding"
+              },
+              {
+                "label": "d) tourism",
+                "value": "Tourism"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-ssc-pal-2",
+            "text": "Which of the following is an example of fixed capital?",
+            "options": [
+              {
+                "label": "a) seeds",
+                "value": "Seed"
+              },
+              {
+                "label": "b) fertilizer",
+                "value": "fertilizer"
+              },
+              {
+                "label": "c) tractor",
+                "value": "Tractor"
+              },
+              {
+                "label": "d) wages",
+                "value": "Labour"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-ssc-pal-3",
+            "text": "What happened with the use of HYV seeds and modern inputs?",
+            "options": [
+              {
+                "label": "a) yield decreased",
+                "value": "yield decreased"
+              },
+              {
+                "label": "b) Green Revolution",
+                "value": "green Revolution"
+              },
+              {
+                "label": "c) The need for irrigation reduced",
+                "value": "irrigation reduced"
+              },
+              {
+                "label": "d) the number of crops per year decreased",
+                "value": "crops decreased"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-pal-4",
+            "text": "Human capital means –",
+            "options": [
+              {
+                "label": "a) Tools and machines",
+                "value": "tools and machines"
+              },
+              {
+                "label": "b) Education, health and skills of the people",
+                "value": "education, health, skills"
+              },
+              {
+                "label": "c) building",
+                "value": "building"
+              },
+              {
+                "label": "d) raw material",
+                "value": "raw material"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-ssc-pal-5",
+            "text": "The main reason for increase in irrigation in Palampur in the 1960s was—",
+            "options": [
+              {
+                "label": "a) Only canals",
+                "value": "only canals"
+              },
+              {
+                "label": "b) Electrically operated tube well",
+                "value": "electric tube well"
+              },
+              {
+                "label": "c) Rainwater harvesting",
+                "value": "rain water harvesting"
+              },
+              {
+                "label": "d) dams on rivers",
+                "value": "dam"
+              }
+            ],
+            "correctIndex": 1
+          }
+        ]
+      }
+    },
+    "Maths": {
+      "Number System": {
+        "Easy": [
+          {
+            "id": "g9-math-ns-1",
+            "text": "Which of the following is an irrational number?",
+            "options": [
+              {
+                "label": "a) √2",
+                "value": "√2"
+              },
+              {
+                "label": "b) 1/3",
+                "value": "1/3"
+              },
+              {
+                "label": "c) 0.125",
+                "value": "0.125"
+              },
+              {
+                "label": "d) −5",
+                "value": "−5"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-math-ns-2",
+            "text": "The decimal representation of 1/8 is—",
+            "options": [
+              {
+                "label": "a) 0.125 (finish)",
+                "value": "0.125 (expirable)"
+              },
+              {
+                "label": "b) 0.13 (non-exhaustive)",
+                "value": "0.13 (non-exhaustive)"
+              },
+              {
+                "label": "c) 0.333… (non-commutable)",
+                "value": "0.333…(non-commutable)"
+              },
+              {
+                "label": "d) 1.8 (expirable)",
+                "value": "1.8 (expired)"
+              }
+            ],
+            "correctIndex": 0
+          },
+          {
+            "id": "g9-math-ns-3",
+            "text": "Which statement is true?",
+            "options": [
+              {
+                "label": "a) Every rational number is an integer",
+                "value": "Every rational number is an integer"
+              },
+              {
+                "label": "b) Every integer is a rational number.",
+                "value": "every integer is a rational number"
+              },
+              {
+                "label": "c) Every irrational number is rational",
+                "value": "every irrational number is rational"
+              },
+              {
+                "label": "d) All real numbers are natural numbers",
+                "value": "All real numbers are natural numbers"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-ns-4",
+            "text": "Express 0.375 as a least fraction:",
+            "options": [
+              {
+                "label": "a) 3/5",
+                "value": "3/5"
+              },
+              {
+                "label": "b) 3/8",
+                "value": "3/8"
+              },
+              {
+                "label": "c) 5/8",
+                "value": "5/8"
+              },
+              {
+                "label": "d) 7/8",
+                "value": "7/8"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-ns-5",
+            "text": "A non-terminating and non-recurring decimal represents –",
+            "options": [
+              {
+                "label": "a) rational numbers",
+                "value": "rational number"
+              },
+              {
+                "label": "b) natural numbers",
+                "value": "natural numbers"
+              },
+              {
+                "label": "c) irrational number",
+                "value": "irrational number"
+              },
+              {
+                "label": "d) integer",
+                "value": "Integer"
+              }
+            ],
+            "correctIndex": 2
+          }
+        ]
+      },
+      "Polynomials": {
+        "Easy": [
+          {
+            "id": "g9-math-poly-1",
+            "text": "The degree (degree) of the polynomial 3x² − 5x + 7 is—",
+            "options": [
+              {
+                "label": "a) 0",
+                "value": "0"
+              },
+              {
+                "label": "b) 1",
+                "value": "1"
+              },
+              {
+                "label": "c) 2",
+                "value": "2"
+              },
+              {
+                "label": "d) 3",
+                "value": "3"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-math-poly-2",
+            "text": "The zeros of x² − 9 are—",
+            "options": [
+              {
+                "label": "a) 3 and 9",
+                "value": "3 and 9"
+              },
+              {
+                "label": "b) −3 and 3",
+                "value": "−3 and 3"
+              },
+              {
+                "label": "c) 0 and 9",
+                "value": "0 and 9"
+              },
+              {
+                "label": "d) −9 and 9",
+                "value": "−9 and 9"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-poly-3",
+            "text": "The degree of linear polynomial is—",
+            "options": [
+              {
+                "label": "a) 0",
+                "value": "0"
+              },
+              {
+                "label": "b) 1",
+                "value": "1"
+              },
+              {
+                "label": "c) 2",
+                "value": "2"
+              },
+              {
+                "label": "d) 3",
+                "value": "3"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-poly-4",
+            "text": "Factor: x² + 7x + 12",
+            "options": [
+              {
+                "label": "a) (x+2)(x+6)",
+                "value": "(x+2)(x+6)"
+              },
+              {
+                "label": "b) (x+3)(x+4)",
+                "value": "(x+3)(x+4)"
+              },
+              {
+                "label": "c) (x−3)(x−4)",
+                "value": "(x−3)(x−4)"
+              },
+              {
+                "label": "d) (x−2)(x−6)",
+                "value": "(x−2)(x−6)"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-poly-5",
+            "text": "The number of zeroes of a non-zero constant polynomial is—",
+            "options": [
+              {
+                "label": "a) 0",
+                "value": "0"
+              },
+              {
+                "label": "b) 1",
+                "value": "1"
+              },
+              {
+                "label": "c) 2",
+                "value": "2"
+              },
+              {
+                "label": "d) infinite",
+                "value": "infinity"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      },
+      "Coordinate Geometry": {
+        "Easy": [
+          {
+            "id": "g9-math-cg-1",
+            "text": "The coordinates of the origin are –",
+            "options": [
+              {
+                "label": "a) (0, 1)",
+                "value": "(0, 1)"
+              },
+              {
+                "label": "b) (1, 0)",
+                "value": "(1, 0)"
+              },
+              {
+                "label": "c) (0, 0)",
+                "value": "(0, 0)"
+              },
+              {
+                "label": "d) (1, 1)",
+                "value": "(1, 1)"
+              }
+            ],
+            "correctIndex": 2
+          },
+          {
+            "id": "g9-math-cg-2",
+            "text": "In which quadrant is the point (−3, 4) located?",
+            "options": [
+              {
+                "label": "a) I",
+                "value": "I"
+              },
+              {
+                "label": "b) II",
+                "value": "II"
+              },
+              {
+                "label": "c)III",
+                "value": "III"
+              },
+              {
+                "label": "d) IV",
+                "value": "IV"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-cg-3",
+            "text": "The distance between the points (0, 0) and (3, 4) is—",
+            "options": [
+              {
+                "label": "a) 4",
+                "value": "4"
+              },
+              {
+                "label": "b) 5",
+                "value": "5"
+              },
+              {
+                "label": "c) 6",
+                "value": "6"
+              },
+              {
+                "label": "d) 7",
+                "value": "7"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-cg-4",
+            "text": "The equation of x-axis is—",
+            "options": [
+              {
+                "label": "a) x = 0",
+                "value": "x = 0"
+              },
+              {
+                "label": "b) y = 0",
+                "value": "y = 0"
+              },
+              {
+                "label": "c) x = y",
+                "value": "x = y"
+              },
+              {
+                "label": "d) x + y = 0",
+                "value": "x + y = 0"
+              }
+            ],
+            "correctIndex": 1
+          },
+          {
+            "id": "g9-math-cg-5",
+            "text": "For any point on the y-axis—",
+            "options": [
+              {
+                "label": "a) x = 0",
+                "value": "x = 0"
+              },
+              {
+                "label": "b) y = 0",
+                "value": "y = 0"
+              },
+              {
+                "label": "c) x = y",
+                "value": "x = y"
+              },
+              {
+                "label": "d) x > 0",
+                "value": "x > 0"
+              }
+            ],
+            "correctIndex": 0
+          }
+        ]
+      }
+    }
+  }
+}

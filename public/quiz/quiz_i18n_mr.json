@@ -120,7 +120,7 @@
           }
         ]
       },
-      "MethodsOfSeperation": {
+      "Methods of Seperation": {
         "Easy": [
           {
             "id": "g7-sci-sep-1",
@@ -239,7 +239,7 @@
           }
         ]
       },
-      "MindfulEating": {
+      "Mindful Eating": {
         "Easy": [
           {
             "id": "g7-sci-me-1",
@@ -479,7 +479,7 @@
           }
         ]
       },
-      "OceansAndContinents": {
+      "Oceans and Continents": {
         "Easy": [
           {
             "id": "g7-ssc-oc-1",
@@ -718,8 +718,8 @@
         ]
       }
     },
-    "Mathematics": {
-      "DataHandling": {
+    "Maths": {
+      "Data Handling": {
         "Easy": [
           {
             "id": "g7-math-dh-1",
@@ -957,7 +957,7 @@
           }
         ]
       },
-      "LinesAndAngles": {
+      "Lines and Angles": {
         "Easy": [
           {
             "id": "g7-math-la-1",
@@ -1199,7 +1199,7 @@
           }
         ]
       },
-      "LifeProcessesInPlants": {
+      "Life Processes in Plants": {
         "Easy": [
           {
             "id": "g8-sci-pl-1",
@@ -1318,7 +1318,7 @@
           }
         ]
       },
-      "LifeProcessesInAnimals": {
+      "Life Processes in Animals": {
         "Easy": [
           {
             "id": "g8-sci-an-1",
@@ -1558,7 +1558,7 @@
           }
         ]
       },
-      "GuptaEmpires": {
+      "Gupta Empire": {
         "Easy": [
           {
             "id": "g8-ssc-gupta-1",
@@ -1677,7 +1677,7 @@
           }
         ]
       },
-      "UnderstandingMarkets": {
+      "Understanding Markets": {
         "Easy": [
           {
             "id": "g8-ssc-mkt-1",
@@ -1798,7 +1798,7 @@
       }
     },
     "Mathematics": {
-      "ExpressionsUsingLetters": {
+      "Expressions using Letters": {
         "Easy": [
           {
             "id": "g8-math-exp-1",
@@ -2036,7 +2036,7 @@
           }
         ]
       },
-      "NumberPlay": {
+      "Number Play": {
         "Easy": [
           {
             "id": "g8-math-np-1",
