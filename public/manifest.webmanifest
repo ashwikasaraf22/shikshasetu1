@@ -4,8 +4,8 @@
   "display": "standalone",
   "scope": "/",
   "start_url": "/",
-  "name": "Siksha Setu",
-  "short_name": "Siksha Setu",
+  "name": "Vidya Setu",
+  "short_name": "Vidya Setu",
   "description": "Learning platform for students and teachers",
   "icons": [
     {

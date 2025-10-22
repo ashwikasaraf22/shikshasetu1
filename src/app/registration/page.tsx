@@ -13,7 +13,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 type Role = 'student' | 'teacher' | 'parent' | '';
 
-export default function ShikshaSetuRegistration() {
+export default function VidyaSetuRegistration() {
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -166,7 +166,7 @@ export default function ShikshaSetuRegistration() {
 
       <div className="relative z-10 bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl w-full max-w-md p-8 border border-white/40 transition-transform transform hover:scale-[1.02] duration-300 ease-in-out">
         <h1 className="text-4xl font-extrabold text-center text-purple-700 mb-3">
-          Shiksha Setu {/* Brand Name */}
+          Vidya Setu {/* Brand Name */}
         </h1>
         <p className="text-center text-gray-500 mb-6">
           <T>Join the bridge to better learning</T> 🌱

@@ -85,7 +85,7 @@ function ProfilePage() {
     const handleAppInstalled = () => {
       setInstallPrompt(null);
       setIsStandalone(true);
-      toast({ title: 'Installed', description: 'Shiksha Setu was installed successfully.' });
+      toast({ title: 'Installed', description: 'Vidya Setu was installed successfully.' });
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

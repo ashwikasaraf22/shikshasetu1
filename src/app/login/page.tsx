@@ -120,7 +120,7 @@ function LoginContent() {
       {/* Main login card */}
       <div className="relative z-10 bg-white/80 backdrop-blur-md p-8 sm:p-10 rounded-2xl shadow-2xl w-full max-w-md transition-transform transform hover:scale-[1.01]"> {/* Adjusted max-width and hover */}
         <h1 className="whitespace-nowrap text-3xl sm:text-4xl font-bold text-center text-purple-700 mb-2">
-          <T>Login to Shiksha Setu</T>
+          <T>Login to Vidya Setu</T>
         </h1>
         <p className="text-center text-gray-500 mb-8">
           <T>Welcome back! Please log in to continue your learning journey</T> 🎒

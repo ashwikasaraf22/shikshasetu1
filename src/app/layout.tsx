@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 // Metadata for the site (like title, description for SEO)
 export const metadata: Metadata = {
-  title: "Shiksha Setu",
+  title: "Vidya Setu",
   description: "A revolutionary learning platform for students, teachers, and parents.",
   manifest: "/manifest.webmanifest", // <-- This correctly links your manifest
   themeColor: "#4f46e5",
@@ -29,10 +29,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* PWA and Font related meta tags */}
-        <meta name="application-name" content="Shiksha Setu" />
+        <meta name="application-name" content="Vidya Setu" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Shiksha Setu" />
+        <meta name="apple-mobile-web-app-title" content="Vidya Setu" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#4f46e5" />

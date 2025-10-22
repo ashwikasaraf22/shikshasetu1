@@ -49,7 +49,7 @@ export default function Home() {
             className="drop-shadow-md"
           />
           <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 via-pink-600 to-indigo-500 drop-shadow-lg tracking-wide">
-            Shiksha Setu {/* Brand Name */}
+            Vidya Setu {/* Brand Name */}
           </h1>
         </div>
 
@@ -185,20 +185,20 @@ export default function Home() {
           </Card>
         </section>
 
-        {/* Why Shiksha Setu Section */}
+        {/* Why Vidya Setu Section */}
         <section className="mb-10 text-center">
           <h3 className="text-2xl font-semibold mb-3 text-purple-700">
-            <T>Why Shiksha Setu?</T>
+            <T>Why SVidya Setu?</T>
           </h3>
           <p className="text-purple-800 max-w-3xl mx-auto leading-relaxed">
-            <T>Shiksha Setu bridges learning gaps with a blend of AI and teacher guidance. Experience smart, personalized education that makes learning engaging, effective, and effortless.</T>
+            <T>Vidya Setu bridges learning gaps with a blend of AI and teacher guidance. Experience smart, personalized education that makes learning engaging, effective, and effortless.</T>
           </p>
         </section>
       </div>
 
       {/* Footer Section */}
       <footer className="border-t mt-8 py-6 text-center text-sm text-purple-600">
-        © {new Date().getFullYear()} <span className="font-semibold">Shiksha Setu</span>. <T>All rights reserved.</T>
+        © {new Date().getFullYear()} <span className="font-semibold">Vidya Setu</span>. <T>All rights reserved.</T>
       </footer>
     </div>
   );
