@@ -102,7 +102,7 @@ async function resolveTextFirstThenHtml(subject:string, language:LangLabel, chap
         const text = extractTextFromHtmlString(raw);
         if (text) return { kind:"html", url: htmlUrl, text };
     }
-    const missing = [`${txtUrl}`, `${htmlUrl}`].join("\n");
+    const missing = [txtUrl, htmlUrl].join("\n");
     throw new Error(`Neither TXT nor HTML was found.\nTried:\n${missing}`);
 }
 function ensureVoicesLoaded(): Promise<SpeechSynthesisVoice[]> { /* ... implementation ... */
@@ -328,13 +328,20 @@ export default function LessonPage() {
       </svg>
 
       <div className="relative z-10 p-6 max-w-6xl mx-auto w-full">
-        {/* Back Button */}
-        <div className="flex justify-start mb-6">
+        {/* Back & Home Buttons */}
+        <div className="flex justify-start mb-6 gap-3">
           <button
             className="px-4 py-2 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
             onClick={() => router.back()}
           >
             <T>Back</T>
+          </button>
+          {/* New Home Button */}
+          <button
+            className="px-4 py-2 bg-gradient-to-r from-[#6B5BBE] to-[#A1B5FF] text-white rounded-xl hover:brightness-110"
+            onClick={() => router.push('/home')}
+          >
+            <T>Home</T>
           </button>
         </div>
 
@@ -435,10 +442,10 @@ export default function LessonPage() {
 
                 <div className="flex flex-wrap gap-3 pt-2">
                   <button onClick={handlePlayAudio} disabled={ttsLoading || !audioSubject || !audioChapter} className={`px-6 py-2.5 rounded-xl text-white shadow-sm transition ${ttsLoading || !audioSubject || !audioChapter ? "bg-emerald-300 cursor-not-allowed" : "bg-gradient-to-r from-emerald-500 via-emerald-500 to-emerald-600 hover:brightness-110"}`}>
-                    {ttsLoading ? <T>Preparing…</T> : <T>▶️ Play Audio</T>}
+                    {ttsLoading ? <T>Preparing…</T> : <T>▶ Play Audio</T>}
                   </button>
                   <button onClick={handlePause} disabled={!speaking || paused} className="px-6 py-2.5 rounded-xl border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 transition"><T>⏸ Pause</T></button>
-                  <button onClick={handleResume} disabled={!speaking || !paused} className="px-6 py-2.5 rounded-xl border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 transition"><T>▶️ Resume</T></button>
+                  <button onClick={handleResume} disabled={!speaking || !paused} className="px-6 py-2.5 rounded-xl border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 transition"><T>▶ Resume</T></button>
                   <button onClick={handleStop} disabled={!speaking} className="px-6 py-2.5 rounded-xl border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 transition"><T>⏹ Stop</T></button>
                 </div>
                 <p className="text-xs text-gray-600 mt-2">
@@ -479,11 +486,11 @@ export default function LessonPage() {
             </div>
           </div>
 
-          {/* Personalized Quiz */}
+          {/* Take a Quiz */}
           <div className="relative bg-gradient-to-br from-yellow-200 via-yellow-100 to-yellow-50 p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden">
             <Eye className="absolute -bottom-10 -right-10 h-40 w-40 text-yellow-300 opacity-40 rotate-12" />
             <Eye className="h-12 w-12 text-yellow-600 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2 text-yellow-700"><T>Personalized Quiz</T></h2>
+            <h2 className="text-2xl font-semibold mb-2 text-yellow-700"><T>Take a Quiz</T></h2>
             <p><T>Test your understanding with AI-generated quizzes.</T></p>
             <div className="mt-4 space-y-3">
               <select className="w-full p-3 border rounded-lg" value={quizSubject} onChange={(e)=>{ setQuizSubject(e.target.value); setQuizChapter(""); setQuizLanguage(""); }}>
@@ -513,4 +520,3 @@ export default function LessonPage() {
       </div>
     </div>
   );
-}

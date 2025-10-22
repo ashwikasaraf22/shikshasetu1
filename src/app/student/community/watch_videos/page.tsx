@@ -1,10 +1,19 @@
 // src/app/student/community/watch_videos/page.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { collection, getDocs, query, where, addDoc, serverTimestamp, doc } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 const LANGS = [
   "Hindi",
@@ -23,7 +32,6 @@ type VideoDoc = {
   description?: string;
   language: LangLabel | string;
   videoURL: string;
-  uploaderName?: string;
   createdAt?: any;
 };
 
@@ -43,6 +51,7 @@ function getClassNumber(cn?: string | null) {
 
 export default function WatchVideosPage() {
   const { user } = useAuth();
+  const router = useRouter();
 
   const [language, setLanguage] = useState<LangLabel | "">("");
   const [videos, setVideos] = useState<VideoDoc[]>([]);
@@ -50,7 +59,8 @@ export default function WatchVideosPage() {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const studentClass = user?.role === "student" ? (user.className as string | undefined) : undefined;
+  const studentClass =
+    user?.role === "student" ? (user.className as string | undefined) : undefined;
   const classNormalized = getClassNumber(studentClass);
 
   const fetchVideos = async (lang: string) => {
@@ -68,7 +78,6 @@ export default function WatchVideosPage() {
           description: data.description || "",
           language: data.language || "",
           videoURL: data.videoURL || "",
-          uploaderName: data.uploaderName || "Teacher",
           createdAt: data.createdAt || null,
         });
       });
@@ -121,19 +130,42 @@ export default function WatchVideosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#E8F7FF] via-white to-[#E8F7FF]">
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-extrabold text-sky-700">Watch a Video</h1>
-        <p className="text-sky-900/70 mt-1">
-          Choose your language to see matching videos uploaded by teachers.
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#E7F2FF] via-[#FFF8F8] to-[#E9F7FF] text-gray-800">
+      {/* background pastel blobs */}
+      <div className="pointer-events-none absolute -top-20 -left-20 h-72 w-72 rounded-full bg-[#DFF2FF] blur-3xl opacity-60" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-[28rem] w-[28rem] rounded-full bg-[#FDE7FF] blur-3xl opacity-60" />
+      <div className="pointer-events-none absolute top-1/3 left-10 h-40 w-40 rounded-full bg-[#D9FFF4] blur-3xl opacity-50" />
+
+      {/* header with back button */}
+      <header className="sticky top-0 z-20 backdrop-blur-xl bg-gradient-to-r from-white/70 via-white/50 to-white/70 border-b border-white/60 shadow-md">
+        <div className="relative max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+          <Button
+            onClick={() => router.push("/student/community")}
+            className="bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
+          >
+            ← Back
+          </Button>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF]">
+            Watch a Video
+          </h1>
+          <div className="w-[92px]" />
+        </div>
+      </header>
+
+      {/* main content */}
+      <main className="relative z-10 max-w-5xl mx-auto px-6 py-10">
+        <p className="text-sky-900/80 text-center mb-6">
+          Choose your preferred language to view videos.
         </p>
 
-        <div className="mt-6 rounded-2xl bg-white/85 backdrop-blur border border-sky-100 shadow-xl p-6">
+        <div className="rounded-3xl border border-sky-100 bg-white/80 shadow-2xl backdrop-blur p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-1">
-              <label className="block text-sm font-medium text-sky-900/80 mb-1">Language</label>
+              <label className="block text-sm font-medium text-sky-900/80 mb-1">
+                Language
+              </label>
               <select
-                className="w-full p-3 border rounded-lg bg-white"
+                className="w-full p-3 border border-sky-200 rounded-xl bg-white focus:ring-2 focus:ring-sky-300"
                 value={language}
                 onChange={onChangeLanguage}
               >
@@ -147,31 +179,38 @@ export default function WatchVideosPage() {
             </div>
           </div>
 
-          {loading && <p className="mt-4 text-sky-800">Loading videos…</p>}
+          {loading && <p className="mt-6 text-sky-800">Loading videos…</p>}
+
           {error && (
-            <p className="mt-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2 inline-block">
+            <p className="mt-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-2 inline-block">
               {error}
             </p>
           )}
 
           {!loading && !error && language && (
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
               {videos.length === 0 && (
-                <p className="text-sky-800">No videos found for <b>{language}</b> yet.</p>
+                <p className="text-sky-800 text-center col-span-full">
+                  No videos found for <b>{language}</b> yet.
+                </p>
               )}
 
               {videos.map((v) => (
                 <div
                   key={v.id}
-                  className="rounded-2xl border border-sky-100 bg-white/90 shadow-lg overflow-hidden"
+                  className="rounded-2xl border border-sky-100 bg-gradient-to-br from-[#F8FBFF] to-[#EAF6FF] shadow-lg overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-2xl"
                 >
                   <div className="p-4">
-                    <h3 className="text-lg font-bold text-sky-800">{v.title}</h3>
+                    <h3 className="text-lg font-semibold text-sky-800">
+                      {v.title}
+                    </h3>
                     {v.description && (
-                      <p className="text-sm text-sky-900/70 mt-1">{v.description}</p>
+                      <p className="text-sm text-sky-900/70 mt-1">
+                        {v.description}
+                      </p>
                     )}
                     <p className="text-xs text-sky-900/60 mt-2">
-                      Language: <b>{String(v.language)}</b> • Uploaded by {v.uploaderName || "Teacher"}
+                      Language: <b>{String(v.language)}</b>
                     </p>
                   </div>
 
@@ -179,14 +218,14 @@ export default function WatchVideosPage() {
                     {playingId === v.id ? (
                       <video
                         controls
-                        className="w-full rounded-xl border"
+                        className="w-full rounded-xl border border-sky-100"
                         src={v.videoURL}
                         onPlay={() => logView(v)}
                       />
                     ) : (
                       <button
                         onClick={() => handlePlay(v)}
-                        className="w-full px-5 py-3 rounded-xl text-white bg-gradient-to-r from-sky-600 to-sky-700 hover:brightness-110"
+                        className="w-full px-5 py-3 rounded-xl text-white font-medium bg-gradient-to-r from-sky-500 to-sky-600 hover:brightness-110 shadow"
                       >
                         ▶️ Play Video
                       </button>
@@ -198,10 +237,12 @@ export default function WatchVideosPage() {
           )}
 
           {!language && (
-            <p className="mt-4 text-sky-800">Select a language to see available videos.</p>
+            <p className="mt-6 text-center text-sky-800">
+              Please select a language to view available videos.
+            </p>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

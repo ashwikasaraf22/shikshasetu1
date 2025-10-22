@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 type Question = {
   question: string;
@@ -14,6 +15,8 @@ type Question = {
 
 export default function UploadTests() {
   const { user } = useAuth();
+  const router = useRouter();
+
   const [loading, setLoading] = useState(false);
   const [teacherData, setTeacherData] = useState<any>(null);
 
@@ -35,13 +38,19 @@ export default function UploadTests() {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
-          const data = userSnap.data();
+          const data = userSnap.data() as any;
           if (data.role !== "teacher") {
             alert("❌ Only teachers can upload tests.");
             return;
           }
-          setTeacherData(data);
-          setFormData((prev) => ({ ...prev, subject: data.subject }));
+
+          // Normalize className to array (purely defensive; UI needs array for mapping)
+          const normalizedClasses = Array.isArray(data.className)
+            ? data.className
+            : (data.className ? [data.className] : []);
+
+          setTeacherData({ ...data, className: normalizedClasses });
+          setFormData((prev) => ({ ...prev, subject: data.subject || "" }));
         }
       } catch (err) {
         console.error("Error fetching teacher data:", err);
@@ -111,7 +120,7 @@ export default function UploadTests() {
       setFormData({
         title: "",
         description: "",
-        subject: teacherData.subject,
+        subject: teacherData.subject || "",
         chapter: "",
         targetClasses: [],
         questions: [{ question: "", options: ["", "", "", ""], correctAnswer: "" }],
@@ -124,131 +133,186 @@ export default function UploadTests() {
     }
   };
 
-  if (!teacherData) return <p className="text-center mt-10">Loading teacher data...</p>;
+  if (!teacherData) return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E6E9FF] via-[#F4F7FF] to-[#EAF5FF]">
+      <p className="text-[#4E3FA3] bg-white/70 px-4 py-2 rounded-xl border border-white/60 shadow-sm">Loading teacher data...</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#E6E9FF] via-[#F4F7FF] to-[#EAF5FF] p-8 flex flex-col items-center">
-      <h1 className="text-3xl font-bold text-purple-700 mb-6">📘 Create a New MCQ Test</h1>
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#ECE7FF] via-[#F6F3FF] to-[#E3F1FF] text-gray-800">
+      {/* soft blobs */}
+      <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-[#E3E0FF] blur-3xl opacity-50" />
+      <div className="pointer-events-none absolute -bottom-28 -right-20 h-[26rem] w-[26rem] rounded-full bg-[#DFF7EF] blur-3xl opacity-50" />
+      <div className="pointer-events-none absolute top-1/3 left-10 h-40 w-40 rounded-full bg-[#FFEAF1] blur-3xl opacity-40" />
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md w-full max-w-3xl space-y-4">
-        <div>
-          <label className="block font-medium text-gray-700">Title</label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg p-2 mt-1"
-          />
+      {/* Header bar */}
+      <header className="sticky top-0 z-20 backdrop-blur-2xl bg-gradient-to-r from-white/60 via-white/50 to-white/60 border-b border-white/40 shadow-md">
+        <div className="relative mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
+          <Button
+            type="button"
+            onClick={() => router.push('/teacher/community')}
+            className="bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
+          >
+            ← Back
+          </Button>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF]">
+            Create a New MCQ Test
+          </h1>
+          <div className="w-[92px]" />
         </div>
+      </header>
 
-        <div>
-          <label className="block font-medium text-gray-700">Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            className="w-full border rounded-lg p-2 mt-1"
-          />
-        </div>
-
-        <div>
-          <label className="block font-medium text-gray-700">Subject</label>
-          <input
-            type="text"
-            value={teacherData.subject || "Loading..."}
-            disabled
-            className="w-full border rounded-lg p-2 mt-1 bg-gray-100 cursor-not-allowed"
-          />
-        </div>
-
-        <div>
-          <label className="block font-medium text-gray-700 mb-1">Target Classes</label>
-          <div className="flex gap-4">
-            {teacherData.className.map((cls: string) => (
-              <label key={cls} className="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={formData.targetClasses.includes(cls)}
-                  onChange={(e) => handleClassChange(cls, e.target.checked)}
-                  className="w-4 h-4 accent-purple-500"
-                />
-                {cls}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block font-medium text-gray-700">Chapter</label>
-          <input
-            type="text"
-            name="chapter"
-            value={formData.chapter}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg p-2 mt-1"
-          />
-        </div>
-
-        <h2 className="text-xl font-semibold text-purple-600 mt-4">Questions (MCQ)</h2>
-        {formData.questions.map((q, idx) => (
-          <div key={idx} className="border rounded-xl p-4 mt-2 bg-gray-50 space-y-2">
-            <input
-              type="text"
-              placeholder={`Question ${idx + 1}`}
-              value={q.question}
-              onChange={(e) => handleQuestionChange(idx, "question", e.target.value)}
-              required
-              className="w-full border rounded-lg p-2"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              {["A", "B", "C", "D"].map((opt, i) => (
-                <input
-                  key={i}
-                  type="text"
-                  placeholder={`Option ${opt}`}
-                  value={q.options[i]}
-                  onChange={(e) => handleQuestionChange(idx, "option", e.target.value, i)}
-                  required
-                  className="w-full border rounded-lg p-2"
-                />
-              ))}
+      {/* Content card */}
+      <main className="relative z-10 mx-auto max-w-3xl p-6 pb-16">
+        <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-2xl backdrop-blur">
+          {/* Title / Description */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm text-[#4E3FA3]/80 mb-1">Title</label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                className="w-full rounded-xl border border-[#E7E3FF] bg-white/90 p-3 outline-none focus:ring-2 focus:ring-[#C7B7FF]"
+              />
             </div>
             <div>
-              <label className="block text-gray-700 mt-1">Correct Answer</label>
-              <select
-                value={q.correctAnswer}
-                onChange={(e) => handleQuestionChange(idx, "correctAnswer", e.target.value)}
-                required
-                className="w-full border rounded-lg p-2 mt-1"
-              >
-                <option value="">Select Correct Answer</option>
-                {q.options.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
+              <label className="block text-sm text-[#4E3FA3]/80 mb-1">Subject</label>
+              <input
+                type="text"
+                value={teacherData.subject || "Loading..."}
+                disabled
+                className="w-full rounded-xl border border-[#E7E3FF] bg-[#F6F5FF] p-3 text-gray-600 cursor-not-allowed"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-[#4E3FA3]/80 mb-1">Description</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-[#E7E3FF] bg-white/90 p-3 outline-none focus:ring-2 focus:ring-[#C7B7FF]"
+              />
             </div>
           </div>
-        ))}
 
-        <Button
-          type="button"
-          onClick={addQuestion}
-          className="bg-purple-200 hover:bg-purple-300 text-purple-700 w-full mt-2"
-        >
-          ➕ Add Another Question
-        </Button>
+          {/* Target Classes */}
+          <div className="mt-6">
+            <label className="block text-sm text-[#4E3FA3]/80 mb-2">Target Classes</label>
+            {teacherData.className.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#E7E3FF] bg-white/70 p-3 text-sm text-[#5A4DA8]">
+                No classes found on your profile.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {teacherData.className.map((cls: string) => {
+                  const active = formData.targetClasses.includes(cls);
+                  return (
+                    <label
+                      key={cls}
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition
+                        ${active ? 'bg-[#E7FFF7] text-[#2A7B6F] border-[#C8EFE6]' : 'bg-white text-[#4E3FA3] border-[#E7E3FF]'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={active}
+                        onChange={(e) => handleClassChange(cls, e.target.checked)}
+                        className="accent-[#7C6BF2]"
+                      />
+                      {cls}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white hover:brightness-110 mt-4"
-        >
-          {loading ? "Creating..." : "Create MCQ Test"}
-        </Button>
-      </form>
+          {/* Chapter */}
+          <div className="mt-6">
+            <label className="block text-sm text-[#4E3FA3]/80 mb-1">Chapter</label>
+            <input
+              type="text"
+              name="chapter"
+              value={formData.chapter}
+              onChange={handleChange}
+              required
+              className="w-full rounded-xl border border-[#E7E3FF] bg-white/90 p-3 outline-none focus:ring-2 focus:ring-[#C7B7FF]"
+            />
+          </div>
+
+          {/* Questions */}
+          <h2 className="mt-8 text-xl font-semibold text-[#4E3FA3]">Questions (MCQ)</h2>
+          {formData.questions.map((q, idx) => (
+            <div key={idx} className="mt-3 rounded-2xl border bg-white/90 backdrop-blur p-5 shadow-sm">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-[#F0E9FF] px-3 py-1 text-xs font-medium text-[#4E3FA3]">
+                  Q{idx + 1}
+                </span>
+              </div>
+
+              <input
+                type="text"
+                placeholder={`Question ${idx + 1}`}
+                value={q.question}
+                onChange={(e) => handleQuestionChange(idx, "question", e.target.value)}
+                required
+                className="w-full rounded-xl border border-[#E7E3FF] bg-white/90 p-3 outline-none focus:ring-2 focus:ring-[#C7B7FF]"
+              />
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {["A", "B", "C", "D"].map((opt, i) => (
+                  <input
+                    key={i}
+                    type="text"
+                    placeholder={`Option ${opt}`}
+                    value={q.options[i]}
+                    onChange={(e) => handleQuestionChange(idx, "option", e.target.value, i)}
+                    required
+                    className="w-full rounded-xl border border-[#E7E3FF] bg-white/90 p-3 outline-none focus:ring-2 focus:ring-[#C7B7FF]"
+                  />
+                ))}
+              </div>
+
+              <div className="mt-3">
+                <label className="block text-sm text-[#4E3FA3]/80 mb-1">Correct Answer</label>
+                <select
+                  value={q.correctAnswer}
+                  onChange={(e) => handleQuestionChange(idx, "correctAnswer", e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-[#E7E3FF] bg-white/90 p-3 outline-none focus:ring-2 focus:ring-[#C7B7FF]"
+                >
+                  <option value="">Select Correct Answer</option>
+                  {q.options.map((opt, i) => (
+                    <option key={i} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ))}
+
+          {/* Actions */}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Button
+              type="button"
+              onClick={addQuestion}
+              className="w-full bg-gradient-to-r from-[#BDE5D6] to-[#D7F2EA] text-[#1F6E5A] hover:brightness-110 rounded-xl"
+            >
+              ➕ Add Another Question
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              onClick={handleSubmit}
+              className="w-full bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white hover:brightness-110 rounded-xl"
+            >
+              {loading ? "Creating..." : "Create MCQ Test"}
+            </Button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

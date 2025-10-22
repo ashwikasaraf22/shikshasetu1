@@ -1,6 +1,6 @@
 'use client';
 
-import { T } from '@/components/T'; // Added Import
+import { T } from '@/components/T';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ export default function AskLanding() {
 
   return (
     <div className="relative min-h-screen overflow-hidden text-gray-800">
-      {/* Pastel backdrop & Doodles remain the same */}
+      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#F0EBFF] via-[#FFEAF2] to-[#E7F7F3]" />
       <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-[#DDD4FF] blur-3xl opacity-60" />
       <div className="pointer-events-none absolute -bottom-28 -right-20 h-[26rem] w-[26rem] rounded-full bg-[#FFDCC7] blur-3xl opacity-60" />
@@ -33,20 +33,45 @@ export default function AskLanding() {
         <rect x="36" y="64" width="44" height="6" rx="3" fill="#E0F4F1" />
       </svg>
 
-      {/* Header + Back */}
+      {/* Header + Back + Home */}
       <header className="relative z-10 mx-auto max-w-5xl px-6 pt-12 pb-6">
-        <div className="mb-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/student')}
-            className="border-[#D5CEFF] bg-white/80 text-[#4C409F] backdrop-blur inline-flex items-center gap-2"
-            aria-label="Back to Student"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" className="-ml-0.5">
-              <path d="M15 18l-6-6 6-6" fill="none" stroke="#6F5AE8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <T>Back</T>
-          </Button>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => router.push('/student')}
+              className="border-[#D5CEFF] bg-white/80 text-[#4C409F] backdrop-blur inline-flex items-center gap-2"
+              aria-label="Back to Student"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" className="-ml-0.5">
+                <path
+                  d="M15 18l-6-6 6-6"
+                  fill="none"
+                  stroke="#6F5AE8"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <T>Back</T>
+            </Button>
+
+            {/* 🏠 Home button */}
+            <Button
+              variant="outline"
+              onClick={() => router.push('/home')}
+              className="border-[#D5CEFF] bg-white/80 text-[#4C409F] backdrop-blur inline-flex items-center gap-2"
+              aria-label="Go to Home"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6F5AE8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7" />
+                <path d="M9 22V12h6v10" />
+              </svg>
+              <T>Home</T>
+            </Button>
+          </div>
+
+          <div className="w-[84px]" />
         </div>
 
         <h1 className="text-center text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6F5AE8] via-[#9B87F5] to-[#59BBD0]">
@@ -57,9 +82,10 @@ export default function AskLanding() {
         </p>
       </header>
 
-      {/* Cards */}
+      {/* Main content */}
       <main className="relative z-10 mx-auto max-w-5xl px-6 pb-16">
         <div className="grid gap-6 sm:grid-cols-2">
+          {/* Ask AI */}
           <Card className="overflow-hidden border-white/70 bg-white/90 backdrop-blur shadow-2xl">
             <CardHeader>
               <CardTitle className="text-[#3F338C]"><T>Ask AI</T></CardTitle>
@@ -80,6 +106,7 @@ export default function AskLanding() {
             </CardContent>
           </Card>
 
+          {/* Ask Teacher */}
           <Card className="overflow-hidden border-white/70 bg-white/90 backdrop-blur shadow-2xl">
             <CardHeader>
               <CardTitle className="text-[#3F338C]"><T>Ask Teacher</T></CardTitle>

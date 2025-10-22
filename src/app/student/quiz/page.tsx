@@ -175,7 +175,7 @@ function QuizContent() {
         <div className={`rounded-3xl ${cardBg} p-6 mb-6`}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-extrabold text-[#6B5BBE]"><T>Personalised Quiz</T></h1>
+              <h1 className="text-3xl font-extrabold text-[#6B5BBE]"><T>Take a Quiz</T></h1>
               <p className="text-sm text-[#5A4DA8]/90 mt-1">
                 <T>Subject:</T> <span className="font-semibold">{rawSubject}</span> • <T>Chapter</T>{' '}
                 <span className="font-semibold">{rawChapter}</span> • <T>Level</T>{' '}

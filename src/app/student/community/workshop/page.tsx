@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { collection, getDocs, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 type Workshop = {
   id?: string; // Firestore document ID
@@ -24,6 +26,33 @@ function parseWorkshopStart(w: Workshop): Date | null {
   return new Date(y, m - 1, d, hh, mm, 0, 0);
 }
 
+// NEW: Parse duration strings like "60", "60m", "1h", "1h 30m", "90 minutes", "2 hours"
+function parseDurationMinutes(raw: string | undefined | null): number | null {
+  if (!raw) return null;
+  const s = String(raw).trim().toLowerCase();
+
+  // pure number: treat as minutes
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+
+  // e.g., "75m", "75 min", "75 minutes"
+  const m1 = s.match(/(\d+)\s*(m|min|mins|minute|minutes)\b/);
+  if (m1) return parseInt(m1[1], 10);
+
+  // e.g., "2h", "2 hr", "2 hours"
+  const h1 = s.match(/(\d+)\s*(h|hr|hrs|hour|hours)\b/);
+  if (h1) return parseInt(h1[1], 10) * 60;
+
+  // e.g., "1h 30m", "1 hour 15 minutes"
+  const hm = s.match(/(?:(\d+)\s*(h|hr|hrs|hour|hours))?\s*(?:(\d+)\s*(m|min|mins|minute|minutes))?/);
+  if (hm) {
+    const hours = hm[1] ? parseInt(hm[1], 10) : 0;
+    const mins = hm[3] ? parseInt(hm[3], 10) : 0;
+    if (hours || mins) return hours * 60 + mins;
+  }
+
+  return null;
+}
+
 function msToShort(mmsecs: number) {
   if (mmsecs <= 0) return 'now';
   const totalSeconds = Math.floor(mmsecs / 1000);
@@ -40,6 +69,7 @@ function msToShort(mmsecs: number) {
 
 export default function StudentWorkshop() {
   const { user } = useAuth();
+  const router = useRouter();
 
   const [studentClass, setStudentClass] = useState<string>('');
   const [studentLanguage, setStudentLanguage] = useState<string>('');
@@ -68,16 +98,27 @@ export default function StudentWorkshop() {
     const fetchWorkshops = async () => {
       setLoading(true);
       try {
-        const q = collection(db, 'community_workshops'); // ✅ Fixed collection name
+        const q = collection(db, 'community_workshops'); // ✅ collection name
         const snapshot = await getDocs(q);
         const data: Workshop[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Workshop) }));
+
         const filtered = data
           .filter(w => w.Class?.trim() === studentClass && w.Language?.trim() === studentLanguage)
+          // NEW: hide past workshops — keep only those whose end time >= now
+          .filter(w => {
+            const start = parseWorkshopStart(w);
+            if (!start) return false; // can't determine, hide it
+            const durMin = parseDurationMinutes(w.Duration) ?? 60; // default 60 mins if unknown
+            const endMs = start.getTime() + durMin * 60 * 1000;
+            return endMs >= Date.now(); // show ongoing/future only
+          })
+          // sort by start time ascending
           .sort((a, b) => {
             const aStart = parseWorkshopStart(a)?.getTime() || 0;
             const bStart = parseWorkshopStart(b)?.getTime() || 0;
             return aStart - bStart;
           });
+
         setWorkshops(filtered);
       } catch (e) {
         console.error('Error fetching workshops:', e);
@@ -159,15 +200,25 @@ export default function StudentWorkshop() {
       <div className="pointer-events-none absolute -bottom-16 -right-16 h-96 w-96 rounded-full bg-[#E3F2F1] blur-3xl opacity-60 animate-pulse delay-700" />
       <div className="pointer-events-none absolute top-1/2 -left-10 h-40 w-40 rounded-full bg-[#FCE7F3] blur-3xl opacity-50" />
 
-      {/* Header */}
+      {/* Header with Back Button */}
       <header className="relative z-10">
-        <div className="mx-auto max-w-6xl px-6 pt-10 pb-4">
-          <h1 className="text-center text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#7C6BF2] via-[#9B87F5] to-[#A1B5FF] drop-shadow-sm">
-            Workshops Hub
-          </h1>
-          <p className="mt-2 text-center text-[#6B5BBE]/80">
-            Curated sessions for your class & language preferences
-          </p>
+        <div className="mx-auto max-w-6xl px-6 pt-10 pb-4 flex items-center justify-between">
+          <Button
+            type="button"
+            onClick={() => router.push('/student/community')}
+            className="z-30 pointer-events-auto bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl px-4 py-2 hover:brightness-110"
+          >
+            ← Back
+          </Button>
+          <div className="flex-1 text-center">
+            <h1 className="text-center text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#7C6BF2] via-[#9B87F5] to-[#A1B5FF] drop-shadow-sm">
+              Workshops Hub
+            </h1>
+            <p className="mt-2 text-center text-[#6B5BBE]/80">
+              Curated sessions for your class & language preferences
+            </p>
+          </div>
+          <div className="w-20" /> {/* Spacer */}
         </div>
       </header>
 
@@ -206,7 +257,7 @@ export default function StudentWorkshop() {
                   <option value="">Select</option>
                   <option>Hindi</option>
                   <option>English</option>
-                  <option>Panjabi</option>
+                  <option>Punjabi</option>
                   <option>Tamil</option>
                   <option>Assamese</option>
                   <option>Bengali</option>
@@ -257,6 +308,9 @@ export default function StudentWorkshop() {
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {workshops.map((w, i) => {
                   const start = parseWorkshopStart(w);
+                  const durMin = parseDurationMinutes(w.Duration) ?? 60;
+                  const end = start ? new Date(start.getTime() + durMin * 60 * 1000) : null;
+
                   const fiveMinBefore = start ? start.getTime() - 5 * 60 * 1000 : null;
                   const msUntil = fiveMinBefore !== null ? fiveMinBefore - now : null;
                   const isJoinActive = fiveMinBefore !== null ? now >= fiveMinBefore : false;
@@ -287,6 +341,18 @@ export default function StudentWorkshop() {
                           <span className="block text-[11px] uppercase tracking-wide opacity-70">Duration</span>
                           <span className="font-medium">{w.Duration}</span>
                         </div>
+                        {start && end && (
+                          <div className="col-span-2 rounded-xl bg-[#EEF7FF] px-3 py-2 text-[#2D5B8A]">
+                            <span className="block text-[11px] uppercase tracking-wide opacity-70">Status</span>
+                            <span className="font-medium">
+                              {now < start.getTime()
+                                ? 'Upcoming'
+                                : now <= end.getTime()
+                                ? 'Ongoing'
+                                : 'Ended'}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="mt-5 flex items-center justify-between">

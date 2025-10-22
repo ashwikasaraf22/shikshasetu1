@@ -77,13 +77,26 @@ function CommunityHome() {
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur-2xl bg-gradient-to-r from-white/60 via-white/50 to-white/60 border-b border-white/40 shadow-md">
         <div className="relative max-w-6xl mx-auto px-6 py-5">
+          {/* Back button: force on top and clickable */}
           <Button
-            className="absolute left-6 top-1/2 -translate-y-1/2 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
-            onClick={() => router.push(user?.role === 'student' ? '/student' : '/teacher')}
+            type="button"
+            className="absolute left-6 top-1/2 -translate-y-1/2 z-30 pointer-events-auto bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
+            onClick={() => router.push('/student')}
           >
             <T>Back</T>
           </Button>
-          <h1 className="text-center text-4xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm">
+
+          {/* Home button: force on top and clickable */}
+          <Button
+            type="button"
+            className="absolute right-6 top-1/2 -translate-y-1/2 z-30 pointer-events-auto bg-gradient-to-r from-[#6B5BBE] to-[#A1B5FF] text-white rounded-xl hover:brightness-110"
+            onClick={() => router.push('/home')}
+          >
+            <T>Home</T>
+          </Button>
+
+          {/* Title should not block clicks */}
+          <h1 className="text-center text-4xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm pointer-events-none">
             <T>Community Hub</T>
           </h1>
         </div>
@@ -123,11 +136,14 @@ function CommunityHome() {
 
                 <Icon className="h-12 w-12 text-[#4E3FA3] mb-4" />
                 <h2 className="text-2xl font-semibold text-[#3E2F9A] mb-2">
-                  {tab.title} {/* Already wrapped in array */}
+                  {tab.title}
                 </h2>
-                <p className="text-[#4E3FA3]/80 text-sm">{tab.desc}</p> {/* Already wrapped in array */}
+                <p className="text-[#4E3FA3]/80 text-sm">{tab.desc}</p>
 
-                <Button className="mt-6 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110">
+                <Button
+                  type="button"
+                  className="mt-6 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
+                >
                   <T>Explore</T>
                 </Button>
               </div>
