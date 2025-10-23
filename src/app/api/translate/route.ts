@@ -1,3 +1,4 @@
+
 // src/app/api/translate/route.ts
 // Uses MyMemory API for translations.
 

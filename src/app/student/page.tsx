@@ -28,8 +28,6 @@ type Activity = {
   timestamp?: Timestamp | null;
 };
 
-// timeAgoFromTimestamp function remains the same
-
 export default function StudentDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -55,7 +53,7 @@ export default function StudentDashboard() {
       q,
       (snap: QuerySnapshot<DocumentData>) => {
         setErrorMsg(null);
-        console.log('[Recent Quizzes] docs:', snap.docs.map(d => ({ id: d.id, ...d.data() }))); // Debug log
+        console.log('[Recent Quizzes] docs:', snap.docs.map(d => ({ id: d.id, ...d.data() })));
 
         const quizzes: Activity[] = snap.docs.map((d) => {
           const data = d.data() as {
@@ -77,7 +75,7 @@ export default function StudentDashboard() {
       (err) => {
         console.error('[Recent Quizzes] onSnapshot error:', err);
         setErrorMsg(err?.message || 'Failed to load recent quizzes.');
-        setRecentActivity([]); // Graceful fallback
+        setRecentActivity([]);
       }
     );
 
@@ -87,10 +85,9 @@ export default function StudentDashboard() {
   const quizActivities = useMemo(() => recentActivity ?? [], [recentActivity]);
 
   if (loading || !user) {
-    return <p className="text-center mt-20"><T>Loading...</T></p>; // Wrapped Loading
+    return <p className="text-center mt-20"><T>Loading...</T></p>;
   }
 
-  // timeAgoFromTimestamp function (kept here for brevity)
   function timeAgoFromTimestamp(ts?: Timestamp | null): string {
     if (!ts) return 'just now';
     const date = ts.toDate();
@@ -106,9 +103,13 @@ export default function StudentDashboard() {
     return date.toLocaleString();
   }
 
+  // Always take user to /home when they click Back on student page
+  const handleBack = () => {
+    router.push('/home');
+  };
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-[#ECE7FF] via-[#F6F3FF] to-[#E3F1FF] text-gray-800 overflow-hidden">
-      {/* Decorative blobs & Doodles remain the same */}
       <div className="pointer-events-none absolute -top-24 -left-20 w-96 h-96 bg-[#F1EBFF] rounded-full blur-3xl opacity-60 animate-pulse" />
       <div className="pointer-events-none absolute bottom-0 right-0 w-[28rem] h-[28rem] bg-[#DFF3FF] rounded-full blur-3xl opacity-60 animate-pulse delay-700" />
       <svg className="pointer-events-none absolute top-10 left-10 w-40 h-40 opacity-70" viewBox="0 0 200 200" fill="none">
@@ -121,24 +122,20 @@ export default function StudentDashboard() {
         <circle cx="70" cy="130" r="14" fill="#CFE7FF" />
       </svg>
 
-      {/* Main Content */}
       <div className="relative z-10 p-6 max-w-5xl mx-auto w-full">
-        {/* Back Button */}
         <div className="flex justify-start mb-6">
           <Button
             className="bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
-            onClick={() => router.back()}
+            onClick={handleBack}
           >
             <T>Back</T>
           </Button>
         </div>
 
-        {/* Welcome */}
         <h1 className="text-3x2 sm:text-5xl font-extrabold text-center text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm mb-12">
           <T>Welcome,</T> {user.name || user.displayName || <T>Student</T>}!
         </h1>
 
-        {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           <div
             className="relative bg-gradient-to-br from-[#CFE7FF] to-[#E5F0FF] p-8 rounded-3xl shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1.5 hover:scale-[1.02] cursor-pointer"
@@ -175,13 +172,12 @@ export default function StudentDashboard() {
           </Link>
         </div>
 
-        {/* Recent Activity */}
         <section className="mb-12">
           <h2 className="text-3xl font-bold mb-6 text-center text-[#5A4DA8]"><T>Recent Activity</T></h2>
 
           {errorMsg && (
             <div className="mx-auto mb-6 max-w-xl rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 text-sm">
-              {errorMsg} {/* Error messages are usually not translated */}
+              {errorMsg}
             </div>
           )}
 
@@ -198,10 +194,10 @@ export default function StudentDashboard() {
                 >
                   <BookText className="h-10 w-10 text-[#6B5BBE] mb-3" />
                   <p className="font-semibold text-[#6B5BBE]">
-                    <T>Completed quiz for</T> '{act.subject}: {act.chapter}' {/* Dynamic parts not wrapped */}
+                    <T>Completed quiz for</T> '{act.subject}: {act.chapter}'
                   </p>
                   <p className="text-[#7C6BF2]"><T>Score:</T> {act.score}</p>
-                  <p className="text-sm text-[#9B87F5]">{timeAgoFromTimestamp(act.timestamp)}</p> {/* Dynamic time not wrapped */}
+                  <p className="text-sm text-[#9B87F5]">{timeAgoFromTimestamp(act.timestamp)}</p>
                 </li>
               ))}
             </ul>

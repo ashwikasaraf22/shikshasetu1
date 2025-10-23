@@ -1,220 +1,246 @@
-'use client';
+// src/app/student/community/videos/page.tsx
+"use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import withAuth from '@/components/auth/withAuth';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Languages } from 'lucide-react';
+import React, { useState } from "react";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
-/** Language helpers (same 7 as elsewhere) */
-const LANGS = ['Hindi', 'Marathi', 'Bengali', 'Tamil', 'English', 'Punjabi', 'Assamese'] as const;
-type LangLabel = typeof LANGS[number];
+const LANGS = [
+  "Hindi",
+  "Marathi",
+  "Bengali",
+  "Tamil",
+  "English",
+  "Punjabi",
+  "Assamese",
+] as const;
+type LangLabel = (typeof LANGS)[number];
 
 type VideoDoc = {
   id: string;
   title: string;
   description?: string;
-  language: LangLabel | string; // stored as label (e.g., "Marathi")
-  videoURL: string;             // path like /videos/<uid>/<file>
-  storagePath?: string;         // optional: 'videos/teacherUid/filename.mp4'
-  createdAt?: any;              // Firestore timestamp
-  uploadedBy?: string;
-  uploaderName?: string;
+  language: LangLabel | string;
+  videoURL: string;
+  createdAt?: any;
 };
 
-function StudentVideosPage() {
-  const router = useRouter();
+function getClassNumber(cn?: string | null) {
+  if (!cn) return "9";
+  const s = String(cn).trim().toLowerCase();
+  const m = s.match(/(?:class|std|standard)?\s*(\d{1,2})/i);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    if ([7, 8, 9].includes(n)) return String(n);
+  }
+  if (/7th/.test(s) || /\bvii\b/.test(s) || /\bseven|saat\b/.test(s)) return "7";
+  if (/8th/.test(s) || /\bviii\b/.test(s) || /\beight|aath\b/.test(s)) return "8";
+  if (/9th/.test(s) || /\bix\b/.test(s) || /\bnine|nau\b/.test(s)) return "9";
+  return "9";
+}
+
+export default function WatchVideosPage() {
   const { user } = useAuth();
+  const router = useRouter();
 
-  // UI selections
-  const [langLabel, setLangLabel] = useState<LangLabel>('Hindi');
-
-  // Data
+  const [language, setLanguage] = useState<LangLabel | "">("");
   const [videos, setVideos] = useState<VideoDoc[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Session view guard so we don’t spam writes if user re-clicks quickly
-  const viewedThisSession = useRef<Set<string>>(new Set());
+  const studentClass =
+    user?.role === "student" ? (user.className as string | undefined) : undefined;
+  const classNormalized = getClassNumber(studentClass);
 
-  // Fetch videos when language changes
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      setLoading(true);
-      setError(null);
-      try {
-        const col = collection(db, 'videos');
-        // store language as label in the videos doc (what the teacher page writes)
-        const q = query(col, where('language', '==', langLabel), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(q);
-        const list: VideoDoc[] = snap.docs.map(d => {
-          const data = d.data() as any;
-          return ({
-            id: d.id,
-            title: data.title || 'Untitled',
-            description: data.description || '',
-            language: data.language,
-            videoURL: data.videoURL,
-            storagePath: data.storagePath,
-            createdAt: data.createdAt || null,
-            uploadedBy: data.uploadedBy,
-            uploaderName: data.uploaderName || 'Teacher',
-          });
-        });
-        if (!cancelled) setVideos(list);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Failed to load videos.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    run();
-    return () => { cancelled = true; };
-  }, [langLabel]);
-
-  async function logViewOnce(video: VideoDoc) {
-    if (!user?.uid) return;
-    if (viewedThisSession.current.has(video.id)) return;
-    viewedThisSession.current.add(video.id);
-
+  const fetchVideos = async (lang: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      // Global log
-      await addDoc(collection(db, 'videoViews'), {
-        studentId: user.uid,
+      const q = query(collection(db, "videos"), where("language", "==", lang));
+      const snap = await getDocs(q);
+      const out: VideoDoc[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        out.push({
+          id: d.id,
+          title: data.title || "Untitled",
+          description: data.description || "",
+          language: data.language || "",
+          videoURL: data.videoURL || "",
+          createdAt: data.createdAt || null,
+        });
+      });
+      setVideos(out);
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.message || "Failed to fetch videos.");
+      setVideos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onChangeLanguage = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const lang = e.target.value as LangLabel;
+    setLanguage(lang);
+    if (lang) {
+      await fetchVideos(lang);
+    } else {
+      setVideos([]);
+    }
+  };
+
+  const logView = async (video: VideoDoc) => {
+    if (!user?.uid) return;
+    try {
+      await addDoc(collection(db, "videoViews"), {
         videoId: video.id,
-        language: video.language,
+        studentID: user.uid,
+        class: classNormalized,
+        language: video.language || language || "",
         title: video.title,
-        viewedAt: serverTimestamp(),
+        timestamp: serverTimestamp(),
       });
 
-      // Per-video subcollection
-      await addDoc(collection(db, 'videos', video.id, 'views'), {
-        studentId: user.uid,
-        viewedAt: serverTimestamp(),
+      await addDoc(collection(db, "videos", video.id, "views"), {
+        studentID: user.uid,
+        timestamp: serverTimestamp(),
       });
     } catch (e) {
-      // Silently ignore logging failures
-      console.warn('Failed to log video view', e);
+      console.error("Failed to log view", e);
     }
-  }
+  };
 
-  const pageBg = 'bg-gradient-to-br from-[#ECE7FF] via-[#F6F3FF] to-[#E3F1FF]';
-  const cardBg = 'bg-white/85 backdrop-blur-xl border border-white/60 shadow-2xl';
+  const handlePlay = async (v: VideoDoc) => {
+    setPlayingId(v.id);
+    await logView(v);
+  };
 
   return (
-    <div className={`relative min-h-screen ${pageBg} text-gray-800 overflow-hidden`}>
-      {/* Decorative bits to match your style */}
-      <svg className="pointer-events-none absolute -top-16 -left-10 w-72 h-72 opacity-70" viewBox="0 0 200 200" fill="none">
-        <path d="M30 100 q40 -20 70 0 q-30 -20 -70 0" stroke="#B9C8FF" strokeWidth="4" fill="none" />
-        <path d="M100 100 q40 -20 70 0 q-30 -20 -70 0" stroke="#C9B8FF" strokeWidth="4" fill="none" />
-        <rect x="120" y="20" width="50" height="14" rx="3" fill="#E7DFFF" />
-        <path d="M125 24 h40" stroke="#CFC2FF" strokeWidth="2" />
-        <path d="M130 24 v10 M140 24 v10 M150 24 v10 M160 24 v10" stroke="#CFC2FF" strokeWidth="2" />
-      </svg>
-      <div className="pointer-events-none absolute -top-20 -left-20 w-96 h-96 bg-[#F1EBFF] rounded-full blur-3xl opacity-60 animate-pulse" />
-      <div className="pointer-events-none absolute bottom-0 right-0 w-[28rem] h-[28rem] bg-[#DFF3FF] rounded-full blur-3xl opacity-60 animate-pulse delay-700" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#E7F2FF] via-[#FFF8F8] to-[#E9F7FF] text-gray-800">
+      {/* background pastel blobs */}
+      <div className="pointer-events-none absolute -top-20 -left-20 h-72 w-72 rounded-full bg-[#DFF2FF] blur-3xl opacity-60" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-[28rem] w-[28rem] rounded-full bg-[#FDE7FF] blur-3xl opacity-60" />
+      <div className="pointer-events-none absolute top-1/3 left-10 h-40 w-40 rounded-full bg-[#D9FFF4] blur-3xl opacity-50" />
 
-      {/* Header */}
-      <header className="sticky top-0 z-20 backdrop-blur-2xl bg-gradient-to-r from-white/60 via-white/50 to-white/60 border-b border-white/40 shadow-md">
-        <div className="relative max-w-6xl mx-auto px-6 py-5">
+      {/* header with back button */}
+      <header className="sticky top-0 z-20 backdrop-blur-xl bg-gradient-to-r from-white/70 via-white/50 to-white/70 border-b border-white/60 shadow-md">
+        <div className="relative max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <Button
-            className="absolute left-6 top-1/2 -translate-y-1/2 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
-            onClick={() => router.push('/student/community')}
+            onClick={() => router.replace("/student/community")}
+            className="bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
           >
-            Back
+            ← Back
           </Button>
-          <h1 className="text-center text-4xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm">
-            Watch Videos
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF]">
+            Watch a Video
           </h1>
+          <div className="w-[92px]" />
         </div>
       </header>
 
-      {/* Body */}
-      <main className="relative z-10 max-w-6xl mx-auto p-6">
-        {/* Filter card */}
-        <div className={`rounded-3xl ${cardBg} p-6 mb-8`}>
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-[#5A4DA8] flex items-center gap-2">
-                <Languages className="h-6 w-6 text-[#6B5BBE]" />
-                Choose Language
-              </h2>
-              <p className="text-[#5A4DA8]/80 text-sm">Only videos uploaded in the selected language are shown.</p>
-            </div>
-            <div className="w-full sm:w-64">
-              <label className="block text-sm font-medium text-[#5A4DA8] mb-1">Language</label>
+      {/* main content */}
+      <main className="relative z-10 max-w-5xl mx-auto px-6 py-10">
+        <p className="text-sky-900/80 text-center mb-6">
+          Choose your preferred language to view videos.
+        </p>
+
+        <div className="rounded-3xl border border-sky-100 bg-white/80 shadow-2xl backdrop-blur p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-1">
+              <label className="block text-sm font-medium text-sky-900/80 mb-1">
+                Language
+              </label>
               <select
-                className="w-full p-3 border rounded-lg bg-white"
-                value={langLabel}
-                onChange={(e) => setLangLabel(e.target.value as LangLabel)}
+                className="w-full p-3 border border-sky-200 rounded-xl bg-white focus:ring-2 focus:ring-sky-300"
+                value={language}
+                onChange={onChangeLanguage}
               >
-                {LANGS.map(l => <option key={l} value={l}>{l}</option>)}
+                <option value="">Select Language</option>
+                {LANGS.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
-        </div>
 
-        {/* List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {loading && (
-            <div className={`rounded-3xl ${cardBg} p-6 text-[#5A4DA8]`}>Loading videos…</div>
-          )}
+          {loading && <p className="mt-6 text-sky-800">Loading videos…</p>}
 
           {error && (
-            <div className={`rounded-3xl ${cardBg} p-6 text-rose-700`}>{error}</div>
+            <p className="mt-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-2 inline-block">
+              {error}
+            </p>
           )}
 
-          {!loading && !error && videos.length === 0 && (
-            <div className={`rounded-3xl ${cardBg} p-6 text-[#5A4DA8]`}>
-              No videos found for <b>{langLabel}</b>.
+          {!loading && !error && language && (
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {videos.length === 0 && (
+                <p className="text-sky-800 text-center col-span-full">
+                  No videos found for <b>{language}</b> yet.
+                </p>
+              )}
+
+              {videos.map((v) => (
+                <div
+                  key={v.id}
+                  className="rounded-2xl border border-sky-100 bg-gradient-to-br from-[#F8FBFF] to-[#EAF6FF] shadow-lg overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-2xl"
+                >
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-sky-800">
+                      {v.title}
+                    </h3>
+                    {v.description && (
+                      <p className="text-sm text-sky-900/70 mt-1">
+                        {v.description}
+                      </p>
+                    )}
+                    <p className="text-xs text-sky-900/60 mt-2">
+                      Language: <b>{String(v.language)}</b>
+                    </p>
+                  </div>
+
+                  <div className="p-4 pt-0">
+                    {playingId === v.id ? (
+                      <video
+                        controls
+                        className="w-full rounded-xl border border-sky-100"
+                        src={v.videoURL}
+                        onPlay={() => logView(v)}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => handlePlay(v)}
+                        className="w-full px-5 py-3 rounded-xl text-white font-medium bg-gradient-to-r from-sky-500 to-sky-600 hover:brightness-110 shadow"
+                      >
+                        ▶ Play Video
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
-          {!loading && !error && videos.map(v => (
-            <article key={v.id} className={`rounded-3xl ${cardBg} overflow-hidden`}>
-              <div className="p-5">
-                <h3 className="text-xl font-semibold text-[#4E3FA3]">{v.title}</h3>
-                {v.description && (
-                  <p className="text-[#4E3FA3]/80 text-sm mt-1">{v.description}</p>
-                )}
-                <p className="text-xs text-[#5A4DA8]/70 mt-1">Language: <b>{String(v.language)}</b></p>
-                {v.uploaderName && (
-                  <p className="text-xs text-[#5A4DA8]/70 mt-1">Uploaded by: <b>{v.uploaderName}</b></p>
-                )}
-              </div>
-
-              <div className="bg-black/5">
-                {/* As soon as the user starts playback we log the view */}
-                <video
-                  controls
-                  preload="metadata"
-                  className="w-full h-auto"
-                  onPlay={() => logViewOnce(v)}
-                  src={v.videoURL}
-                />
-              </div>
-
-              <div className="p-4 flex items-center justify-end">
-                <Button
-                  className="bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
-                  onClick={() => {
-                    window.open(v.videoURL, '_blank', 'noopener,noreferrer');
-                    logViewOnce(v);
-                  }}
-                >
-                  Open in new tab
-                </Button>
-              </div>
-            </article>
-          ))}
+          {!language && (
+            <p className="mt-6 text-center text-sky-800">
+              Please select a language to view available videos.
+            </p>
+          )}
         </div>
       </main>
     </div>
   );
 }
-
-export default withAuth(StudentVideosPage, ['student', 'teacher']);

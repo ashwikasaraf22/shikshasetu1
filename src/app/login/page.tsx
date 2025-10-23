@@ -67,32 +67,6 @@ function LoginContent() {
     }
   };
 
-
-  // handleForgotPassword function remains the same
-  const handleForgotPassword = async () => {
-    if (!email) {
-      alert("Please enter your email address first.");
-      return;
-    }
-    setResetting(true);
-    try {
-      await sendPasswordResetEmail(auth, email);
-      alert("Password reset email sent! Please check your inbox (and spam folder)."); // Added spam folder note
-    } catch (err: any) {
-      console.error("Password Reset Error:", err.code, err.message); // Log error details
-      if (err.code === "auth/user-not-found" || err.code === 'auth/invalid-credential') { // Added invalid-credential
-        alert("Email not found. Please check the address or register first.");
-      } else if (err.code === "auth/invalid-email") {
-         alert("Invalid email address format.");
-      } else {
-        alert("Failed to send reset email: " + err.message);
-      }
-    } finally {
-      setResetting(false);
-    }
-  };
-
-
   // Return statement with JSX remains the same (ensure T component wraps text)
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-100 via-indigo-100 to-pink-100 p-4"> {/* Added padding */}
@@ -145,18 +119,6 @@ function LoginContent() {
             required
             className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90" // Slightly more opaque input
           />
-
-          {/* Forgot password link */}
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              disabled={resetting || loading} // Disable if logging in too
-              className="text-sm text-purple-700 hover:underline disabled:opacity-60 disabled:cursor-not-allowed" // Added disabled cursor
-            >
-              {resetting ? <T>Sending reset link...</T> : <T>Forgot Password?</T>}
-            </button>
-          </div>
 
           <button
             type="submit"
