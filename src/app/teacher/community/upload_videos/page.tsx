@@ -1,15 +1,11 @@
-// src/app/teacher/community/upload_videos/page.tsx
 "use client";
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { db } from "@/lib/firebase";
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-} from "firebase/firestore";
+import { db, storage } from "@/lib/firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 const LANGS = [
   "Hindi",
@@ -21,6 +17,9 @@ const LANGS = [
   "Assamese",
 ] as const;
 type LangLabel = (typeof LANGS)[number];
+
+// Optional client cap (keep <= any server/proxy limit you might have)
+const MAX_FILE_BYTES = 500 * 1024 * 1024; // 500 MB
 
 export default function UploadVideosPage() {
   const router = useRouter();
@@ -37,8 +36,22 @@ export default function UploadVideosPage() {
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
-    if (f && !f.type.startsWith("video/")) {
+
+    if (!f) {
+      setFile(null);
+      return;
+    }
+    if (!f.type.startsWith("video/")) {
       setMessage({ kind: "error", text: "Please select a video file." });
+      e.target.value = "";
+      setFile(null);
+      return;
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      setMessage({
+        kind: "error",
+        text: `File too large. Max ${(MAX_FILE_BYTES / (1024 * 1024)).toFixed(0)} MB.`,
+      });
       e.target.value = "";
       setFile(null);
       return;
@@ -72,63 +85,55 @@ export default function UploadVideosPage() {
       setIsUploading(true);
       setProgress(0);
 
-      // Fake a simple progress UX during upload (we update to 100% on success)
-      const progressTimer = setInterval(() => {
-        setProgress((p) => (p < 90 ? p + 5 : p));
-      }, 150);
+      // Build a storage path: videos/<uid>/<timestamp>_<sanitizedName>
+      const safeName = file.name.replace(/[^\w.\-()+\s]/g, "_") || `video_${Date.now()}.mp4`;
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const storagePath = `videos/${user.uid}/${stamp}_${safeName}`;
+      const storageRef = ref(storage, storagePath);
 
-      // Send file to our API route which stores it under /public/videos
-      const form = new FormData();
-      form.append("file", file);
-      form.append("userId", user.uid);
+      const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
 
-      const res = await fetch("/api/upload-video", {
-        method: "POST",
-        body: form,
-      });
+      task.on(
+        "state_changed",
+        (snap) => {
+          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          setProgress(pct);
+        },
+        (err) => {
+          console.error(err);
+          setMessage({ kind: "error", text: err?.message || "Upload failed." });
+          setIsUploading(false);
+        },
+        async () => {
+          // Completed
+          const downloadURL = await getDownloadURL(task.snapshot.ref);
 
-      clearInterval(progressTimer);
+          const payload = {
+            title: title.trim(),
+            description: description.trim(),
+            language,
+            videoURL: downloadURL,   // public playback URL
+            storagePath,            // videos/<uid>/<file>
+            uploadedBy: user.uid,
+            uploaderName: user.displayName || user.email || "Teacher",
+            role: "teacher",
+            createdAt: serverTimestamp(),
+          };
 
-      const data = await res.json();
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Upload failed.");
-      }
+          await addDoc(collection(db, "videos"), payload);
 
-      setProgress(100);
-
-      const videoURL = data.videoURL as string;       // e.g. /videos/<uid>/<stamp>_file.mp4
-      const storagePath = data.storagePath as string; // relative path in /public
-
-      // Build Firestore payload (metadata only, as requested)
-      const payload = {
-        title: title.trim(),
-        description: description.trim(),
-        language,                 // store label directly (e.g., "Marathi")
-        videoURL,                 // public URL served by Next from /public
-        storagePath,              // relative path (for admin/ops if needed)
-        uploadedBy: user.uid,
-        uploaderName: user.displayName || user.email || "Teacher",
-        role: "teacher",
-        createdAt: serverTimestamp(),
-      };
-
-      // Main listing (students read from this)
-      await addDoc(collection(db, "videos"), payload);
-      // Optional admin mirror if you want it:
-      // await addDoc(collection(db, "admin/videos"), payload);
-
-      setMessage({ kind: "success", text: "Video uploaded successfully!" });
-      setTitle("");
-      setDescription("");
-      setLanguage("");
-      setFile(null);
-      setProgress(0);
+          setMessage({ kind: "success", text: "Video uploaded successfully!" });
+          setTitle("");
+          setDescription("");
+          setLanguage("");
+          setFile(null);
+          setProgress(0);
+          setIsUploading(false);
+        }
+      );
     } catch (err: any) {
       console.error(err);
       setMessage({ kind: "error", text: err?.message || "Upload failed." });
-      setIsUploading(false);
-      return;
-    } finally {
       setIsUploading(false);
     }
   };
@@ -141,7 +146,10 @@ export default function UploadVideosPage() {
           Add a title, description, choose the language, and upload your lesson video.
         </p>
 
-        <form onSubmit={handleUpload} className="mt-8 space-y-5 rounded-2xl bg-white/80 backdrop-blur border border-emerald-100 shadow-xl p-6">
+        <form
+          onSubmit={handleUpload}
+          className="mt-8 space-y-5 rounded-2xl bg-white/80 backdrop-blur border border-emerald-100 shadow-xl p-6"
+        >
           <div>
             <label className="block text-sm font-medium text-emerald-900/80 mb-1">Language</label>
             <select
@@ -190,7 +198,14 @@ export default function UploadVideosPage() {
               onChange={onPickFile}
               className="block w-full text-sm text-emerald-800 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
             />
-            <p className="text-xs text-emerald-900/60 mt-1">Only video files are allowed.</p>
+            <p className="text-xs text-emerald-900/60 mt-1">
+              Only video files are allowed. Max {(MAX_FILE_BYTES / (1024 * 1024)).toFixed(0)} MB.
+            </p>
+            {file && (
+              <p className="text-xs text-emerald-900/70 mt-1">
+                Selected: <strong>{file.name}</strong> ({(file.size / (1024 * 1024)).toFixed(1)} MB)
+              </p>
+            )}
           </div>
 
           {isUploading && (

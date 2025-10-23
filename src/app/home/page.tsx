@@ -188,7 +188,7 @@ export default function Home() {
         {/* Why Vidya Setu Section */}
         <section className="mb-10 text-center">
           <h3 className="text-2xl font-semibold mb-3 text-purple-700">
-            <T>Why SVidya Setu?</T>
+            <T>Why Vidya Setu?</T>
           </h3>
           <p className="text-purple-800 max-w-3xl mx-auto leading-relaxed">
             <T>Vidya Setu bridges learning gaps with a blend of AI and teacher guidance. Experience smart, personalized education that makes learning engaging, effective, and effortless.</T>

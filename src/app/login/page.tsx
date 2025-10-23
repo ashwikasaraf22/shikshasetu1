@@ -1,12 +1,16 @@
 "use client";
 
 import { T } from '@/components/T';
-import React, { useState, Suspense } from "react"; // Import Suspense
+import React, { useState, useEffect, Suspense } from "react"; // Import Suspense + useEffect
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
+
+// (NEW) If your TranslationContext exposes a setter, we'll use it.
+// We import lazily inside the component to avoid hard dependency if types differ.
+// import { useTranslation } from "@/context/TranslationContext";
 
 /* ---- Inner Client Component to access searchParams ---- */
 function LoginContent() {
@@ -19,8 +23,68 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  // (NEW) Language gate state
+  const [chosenLang, setChosenLang] = useState<string>("");
+
+  // (NEW) App language list (display label -> code)
+  const languageOptions: { label: string; code: string }[] = [
+    { label: "English",  code: "en" },
+    { label: "Hindi",    code: "hi" },
+    { label: "Marathi",  code: "mr" },
+    { label: "Tamil",    code: "ta" },
+    { label: "Punjabi",  code: "pa" },
+    { label: "Bengali",  code: "bn" },
+    { label: "Assamese", code: "as" },
+  ];
+
+  // (NEW) On mount, if a language was already chosen earlier (e.g., from profile or a prior visit), respect it and show the form.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved =
+      localStorage.getItem("selectedLanguage") ||
+      localStorage.getItem("appLang") ||
+      "";
+    if (saved) {
+      setChosenLang(saved);
+      // fire event so everything translates on first paint
+      try {
+        window.dispatchEvent(new CustomEvent("languageChange", { detail: saved }));
+      } catch {}
+    }
+  }, []);
+
+  // (NEW) When a language is chosen here, persist it the same way as profile
+  const applyLanguageChoice = (langCode: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("appLang", langCode);
+      localStorage.setItem("selectedLanguage", langCode);
+      try {
+        // Let anyone listening (e.g., TranslationProvider / T / other pages) update immediately
+        window.dispatchEvent(new CustomEvent("languageChange", { detail: langCode }));
+      } catch {}
+    }
+
+    // Try to update your TranslationProvider state immediately (best effort).
+    // We do this dynamically to avoid compile/type issues if your context doesn't export these.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require("@/context/TranslationContext");
+      const hook = mod?.useTranslation as unknown as (() => any) | undefined;
+      if (hook) {
+        const ctx = hook();
+        // common setter names across implementations:
+        ctx?.setTargetLanguage?.(langCode);
+        ctx?.setLanguage?.(langCode);
+      }
+    } catch {
+      // Non-blocking if context doesn't expose setters; localStorage + event are enough.
+    }
+
+    setChosenLang(langCode);
+  };
+
   // handleLogin function remains the same
-   const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -100,41 +164,71 @@ function LoginContent() {
           <T>Welcome back! Please log in to continue your learning journey</T> 🎒
         </p>
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          <input
-            type="email"
-            placeholder="Email Address" // Placeholder translation might be inconsistent across browsers
-            autoComplete="email" // Use standard autocomplete
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90" // Slightly more opaque input
-          />
-          <input
-            type="password"
-            placeholder="Password" // Placeholder translation might be inconsistent across browsers
-            autoComplete="current-password" // Use standard autocomplete
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90" // Slightly more opaque input
-          />
-
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-md font-semibold shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" // Added disabled cursor
-            disabled={loading || resetting} // Disable if resetting too
+        {/* (NEW) Language chooser appears FIRST. The rest of the form is hidden until chosenLang is set */}
+        <div className="mb-6">
+          <label className="block font-semibold text-gray-700 mb-2">
+            <T>Choose Language</T>
+          </label>
+          <select
+            value={chosenLang}
+            onChange={(e) => applyLanguageChoice(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90"
           >
-            {loading ? (
-              <span className="flex justify-center items-center gap-2">
-                <Loader2 className="animate-spin w-5 h-5" />
-                <T>Logging in...</T>
-              </span>
-            ) : (
-              <T>Login</T>
-            )}
-          </button>
-        </form>
+            <option value="">{/* empty -> show placeholder */}<T>Select Language</T></option>
+            {languageOptions.map((opt) => (
+              <option key={opt.code} value={opt.code}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-gray-500">
+            <T>Your app will use this language across login, registration and all pages.</T>
+          </p>
+        </div>
+
+        {/* Render the rest of the login form ONLY when a language has been chosen */}
+        {chosenLang ? (
+          <form onSubmit={handleLogin} className="space-y-5">
+            <input
+              type="email"
+              placeholder="Email Address" // Placeholder translation might be inconsistent across browsers
+              autoComplete="email" // Use standard autocomplete
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90" // Slightly more opaque input
+            />
+            <input
+              type="password"
+              placeholder="Password" // Placeholder translation might be inconsistent across browsers
+              autoComplete="current-password" // Use standard autocomplete
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90" // Slightly more opaque input
+            />
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-md font-semibold shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" // Added disabled cursor
+              disabled={loading || resetting} // Disable if resetting too
+            >
+              {loading ? (
+                <span className="flex justify-center items-center gap-2">
+                  <Loader2 className="animate-spin w-5 h-5" />
+                  <T>Logging in...</T>
+                </span>
+              ) : (
+                <T>Login</T>
+              )}
+            </button>
+          </form>
+        ) : (
+          // If language not chosen yet, we show a gentle note and hide the form.
+          <div className="mt-6 text-sm text-gray-600">
+            <T>Please select your language to continue.</T>
+          </div>
+        )}
 
         <p className="mt-8 text-center text-sm text-gray-700">
           <T>Don’t have an account?</T>{" "}

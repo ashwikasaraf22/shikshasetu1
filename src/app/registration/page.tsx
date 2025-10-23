@@ -205,7 +205,7 @@ export default function VidyaSetuRegistration() {
               <input
                 type="text" name="name" value={formData.name} onChange={handleChange} required
                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70 placeholder-gray-400"
-                placeholder={formData.role === 'parent' ? "Enter parent's full name" : 'Enter your full name'} // Placeholder translation is hard
+                placeholder={formData.role === 'parent' ? "Enter parent's full name" : 'Enter your full name'}
               />
             </div>
           )}
@@ -271,6 +271,9 @@ export default function VidyaSetuRegistration() {
                 <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
                 <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
               </div>
+
+              {/* HIDDEN per request: teacher language dropdown (kept in code, just commented out) */}
+              {/*
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
                 <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
@@ -278,12 +281,28 @@ export default function VidyaSetuRegistration() {
                   {languageOptions.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
+              */}
             </>
           )}
 
           {/* Parent Specific */}
           {formData.role === 'parent' && (
             <>
+              {/* Parent details FIRST */}
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Phone Number</T></label>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required inputMode="tel" minLength={7} maxLength={15} className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="e.g., 9876543210" />
+              </div>
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Email</T></label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter parent's email" />
+              </div>
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
+                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
+              </div>
+
+              {/* Then child details */}
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Child's Name</T></label>
                 <input type="text" name="childName" value={formData.childName} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter child's full name" />
@@ -299,18 +318,8 @@ export default function VidyaSetuRegistration() {
                   {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Phone Number</T></label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required inputMode="tel" minLength={7} maxLength={15} className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="e.g., 9876543210" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Email</T></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter parent's email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
-              </div>
+
+              {/* Parent language stays visible unless you want it hidden too */}
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
                 <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">

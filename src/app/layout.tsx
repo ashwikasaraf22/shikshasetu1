@@ -8,7 +8,8 @@ import { Toaster } from "@/components/ui/toaster"; // For showing notifications
 import { cn } from "@/lib/utils"; // Utility for class names
 import { AuthProvider } from "@/components/auth/AuthProvider"; // Handles user login state
 import RegisterSW from "@/components/RegisterSW"; // For Progressive Web App features
-import { TranslationProvider } from "@/context/TranslationContext"; // <-- IMPORT the new provider
+import { TranslationProvider } from "@/context/TranslationContext"; // <-- translation provider
+import LanguageBootstrap from "@/components/LanguageBootstrap"; // <-- NEW
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -53,11 +54,13 @@ export default function RootLayout({
         {/* Wrap everything inside AuthProvider for login state */}
         <AuthProvider>
           {/* Wrap everything inside TranslationProvider for language state */}
-          <TranslationProvider> {/* <-- WRAP HERE */}
+          <TranslationProvider>
+            {/* Ensure the app language is applied on first paint/refresh */}
+            <LanguageBootstrap /> {/* <-- NEW */}
             {children} {/* Your page content will be rendered here */}
             <Toaster /> {/* Component to display pop-up messages */}
             <RegisterSW /> {/* Component to register the PWA service worker */}
-          </TranslationProvider> {/* <-- END WRAP */}
+          </TranslationProvider>
         </AuthProvider>
       </body>
     </html>

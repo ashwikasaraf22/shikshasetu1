@@ -37,11 +37,11 @@ export default function ScheduleWorkshop() {
         Time,
         Duration,
         Language,
-        MeetingLink,            // ✅ Google Meet link stored
+        MeetingLink, // ✅ Google Meet link stored
         createdAt: serverTimestamp(),
       });
       alert("Workshop scheduled successfully!");
-      router.refresh();        // optional: refresh page or redirect
+      router.refresh(); // optional: refresh page or redirect
       setTitle('');
       setDescription('');
       setClassName('');
@@ -60,6 +60,18 @@ export default function ScheduleWorkshop() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 bg-white/80 rounded-3xl shadow-lg backdrop-blur-lg mt-10">
+
+      {/* 🔙 Back Button */}
+      <div className="mb-6">
+        <Button
+          variant="outline"
+          onClick={() => router.push('/teacher/community')}
+          className="border-[#D5CEFF] bg-white/80 text-[#4C409F] hover:bg-[#F0EFFF] transition-all"
+        >
+          ← Back
+        </Button>
+      </div>
+
       <h1 className="text-3xl font-bold text-[#5A4DA8] mb-6">Schedule Workshop</h1>
       <form onSubmit={handleSubmit} className="grid gap-4">
 
@@ -75,7 +87,11 @@ export default function ScheduleWorkshop() {
 
         <div className="flex flex-col gap-2">
           <label className="font-medium text-[#4E3FA3]">Class *</label>
-          <select value={ClassName} onChange={(e) => setClassName(e.target.value)} className="rounded-xl border p-3">
+          <select
+            value={ClassName}
+            onChange={(e) => setClassName(e.target.value)}
+            className="rounded-xl border p-3"
+          >
             <option value="">Select Class</option>
             <option>7th</option>
             <option>8th</option>
@@ -85,7 +101,11 @@ export default function ScheduleWorkshop() {
 
         <div className="flex flex-col gap-2">
           <label className="font-medium text-[#4E3FA3]">Language *</label>
-          <select value={Language} onChange={(e) => setLanguage(e.target.value)} className="rounded-xl border p-3">
+          <select
+            value={Language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="rounded-xl border p-3"
+          >
             <option value="">Select Language</option>
             <option>Hindi</option>
             <option>English</option>
@@ -116,10 +136,19 @@ export default function ScheduleWorkshop() {
 
         <div className="flex flex-col gap-2">
           <label className="font-medium text-[#4E3FA3]">Google Meet Link *</label>
-          <Input type="url" placeholder="https://meet.google.com/abc-defg-hij" value={MeetingLink} onChange={(e) => setMeetingLink(e.target.value)} />
+          <Input
+            type="url"
+            placeholder="https://meet.google.com/abc-defg-hij"
+            value={MeetingLink}
+            onChange={(e) => setMeetingLink(e.target.value)}
+          />
         </div>
 
-        <Button type="submit" disabled={loading} className="mt-4 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white">
+        <Button
+          type="submit"
+          disabled={loading}
+          className="mt-4 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white"
+        >
           {loading ? 'Scheduling...' : 'Schedule Workshop'}
         </Button>
       </form>
