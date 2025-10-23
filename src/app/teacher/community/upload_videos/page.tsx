@@ -2,10 +2,9 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase"; // keep Firestore
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 const LANGS = [
   "Hindi",
@@ -20,6 +19,18 @@ type LangLabel = (typeof LANGS)[number];
 
 // Optional client cap (keep <= any server/proxy limit you might have)
 const MAX_FILE_BYTES = 500 * 1024 * 1024; // 500 MB
+
+// Small helper to sanitize names for public_id
+function toPublicId(name: string) {
+  return (
+    name
+      .toLowerCase()
+      .replace(/\.[^.]+$/, "") // drop extension
+      .replace(/[^\w\-]+/g, "-") // non-word to hyphen
+      .replace(/\-+/g, "-") // collapse multiple -
+      .replace(/^\-+|\-+$/g, "") || `video_${Date.now()}`
+  );
+}
 
 export default function UploadVideosPage() {
   const router = useRouter();
@@ -64,6 +75,7 @@ export default function UploadVideosPage() {
     e.preventDefault();
     setMessage(null);
 
+    // Basic validation
     if (!user?.uid) {
       setMessage({ kind: "error", text: "You must be logged in as a teacher." });
       return;
@@ -85,52 +97,103 @@ export default function UploadVideosPage() {
       setIsUploading(true);
       setProgress(0);
 
-      // Build a storage path: videos/<uid>/<timestamp>_<sanitizedName>
-      const safeName = file.name.replace(/[^\w.\-()+\s]/g, "_") || `video_${Date.now()}.mp4`;
-      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const storagePath = `videos/${user.uid}/${stamp}_${safeName}`;
-      const storageRef = ref(storage, storagePath);
+      // 1) Ask our server for a Cloudinary signature
+      const folder = `videos/${user.uid}`;
+      const public_id = `${new Date().toISOString().replace(/[:.]/g, "-")}_${toPublicId(file.name)}`;
 
-      const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+      const signRes = await fetch("/api/cloudinary/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder, public_id }),
+      });
 
-      task.on(
-        "state_changed",
-        (snap) => {
-          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          setProgress(pct);
-        },
-        (err) => {
-          console.error(err);
-          setMessage({ kind: "error", text: err?.message || "Upload failed." });
-          setIsUploading(false);
-        },
-        async () => {
-          // Completed
-          const downloadURL = await getDownloadURL(task.snapshot.ref);
+      if (!signRes.ok) {
+        const err = await signRes.json().catch(() => ({}));
+        throw new Error(err?.error || "Failed to sign Cloudinary upload.");
+      }
 
-          const payload = {
-            title: title.trim(),
-            description: description.trim(),
-            language,
-            videoURL: downloadURL,   // public playback URL
-            storagePath,            // videos/<uid>/<file>
-            uploadedBy: user.uid,
-            uploaderName: user.displayName || user.email || "Teacher",
-            role: "teacher",
-            createdAt: serverTimestamp(),
-          };
+      const {
+        cloudName,
+        apiKey,
+        timestamp,
+        signature,
+      }: {
+        cloudName: string;
+        apiKey: string;
+        timestamp: number;
+        signature: string;
+      } = await signRes.json();
 
-          await addDoc(collection(db, "videos"), payload);
+      // 2) POST the actual file directly to Cloudinary
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`;
 
-          setMessage({ kind: "success", text: "Video uploaded successfully!" });
-          setTitle("");
-          setDescription("");
-          setLanguage("");
-          setFile(null);
-          setProgress(0);
-          setIsUploading(false);
-        }
-      );
+      const form = new FormData();
+      form.append("file", file);
+      form.append("api_key", apiKey);
+      form.append("timestamp", String(timestamp));
+      form.append("signature", signature);
+      form.append("folder", folder);
+      form.append("public_id", public_id);
+
+      // Use XHR to track progress
+      const xhr = new XMLHttpRequest();
+      const uploadPromise = new Promise<any>((resolve, reject) => {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const pct = Math.round((event.loaded / event.total) * 100);
+            setProgress(pct);
+          }
+        };
+        xhr.onload = () => {
+          try {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(JSON.parse(xhr.responseText));
+            } else {
+              const msg =
+                (JSON.parse(xhr.responseText)?.error?.message as string) ||
+                `Upload failed with status ${xhr.status}`;
+              reject(new Error(msg));
+            }
+          } catch (err) {
+            reject(err);
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload."));
+        xhr.open("POST", uploadUrl, true);
+        xhr.send(form);
+      });
+
+      const cloudinaryResp = await uploadPromise;
+
+      // Cloudinary response fields we care about:
+      // secure_url, public_id, version, bytes, duration (if available), resource_type
+      const videoURL: string = cloudinaryResp.secure_url;
+      const cloudinaryPublicId: string = cloudinaryResp.public_id;
+      const cloudinaryVersion: number = cloudinaryResp.version;
+
+      // 3) Save metadata to Firestore
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        language,
+        videoURL, // public playback URL (Cloudinary CDN)
+        storagePath: cloudinaryPublicId, // e.g., videos/<uid>/<timestamp>_name
+        uploadedBy: user.uid,
+        uploaderName: user.displayName || user.email || "Teacher",
+        role: "teacher",
+        cloudinaryVersion,
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, "videos"), payload);
+
+      setMessage({ kind: "success", text: "Video uploaded successfully!" });
+      setTitle("");
+      setDescription("");
+      setLanguage("");
+      setFile(null);
+      setProgress(0);
+      setIsUploading(false);
     } catch (err: any) {
       console.error(err);
       setMessage({ kind: "error", text: err?.message || "Upload failed." });
