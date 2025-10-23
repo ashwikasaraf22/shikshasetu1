@@ -16,11 +16,11 @@ const AgoraUIKit = dynamic(
   {
     ssr: false,
     loading: () => (
-        <div className="flex h-full w-full items-center justify-center bg-gray-200">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-3 text-gray-600">Loading Video Interface...</p>
-        </div>
-    )
+      <div className="flex h-full w-full items-center justify-center bg-gray-200">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-gray-600">Loading Video Interface...</p>
+      </div>
+    ),
   }
 );
 
@@ -29,10 +29,13 @@ export default function CallPage() {
   const [token, setToken] = useState<string | null>(null);
   const [isLoadingToken, setIsLoadingToken] = useState(true);
   const router = useRouter();
-  const { channelName: routeChannelName } = useParams();
+  // ✅ Type the params so TS knows channelName is a string
+  const params = useParams<{ channelName: string }>();
+  const routeChannelName = params?.channelName; // string
   const { user, loading: authLoading } = useAuth();
 
-  const channelName = Array.isArray(routeChannelName) ? routeChannelName[0] : routeChannelName;
+  // After typing, this is already a string; keep a local alias for clarity
+  const channelName = routeChannelName;
 
   // 🔔 Make sure the doubt shows callActive while in the call; clear on end
   useEffect(() => {
@@ -40,7 +43,8 @@ export default function CallPage() {
 
     const markActive = async (active: boolean) => {
       try {
-        await updateDoc(doc(db, 'doubts', channelName), {
+        // ✅ Assert non-null inside the guarded scope
+        await updateDoc(doc(db, 'doubts', channelName as string), {
           callActive: active,
         });
       } catch (e) {
@@ -67,7 +71,7 @@ export default function CallPage() {
           const response = await fetch('/api/agora-token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ channelName: channelName, uid: user.uid }),
+            body: JSON.stringify({ channelName, uid: user.uid }),
           });
           const data = await response.json();
           if (response.ok && data.token) {
@@ -75,23 +79,23 @@ export default function CallPage() {
           } else {
             console.error('Failed to fetch token:', data.error || `Status: ${response.status}`);
             alert(`Could not get call token. ${data.error || 'Please try again.'}`);
-            router.push('/chat');
+            router.push('/teacher/doubt_solver');
           }
         } catch (error) {
           console.error('Error fetching token:', error);
           alert('Could not join call due to a network error. Please try again.');
-          router.push('/chat');
+          router.push('/teacher/doubt_solver');
         } finally {
           setIsLoadingToken(false);
         }
       } else if (!user) {
-        console.error("User not authenticated for call.");
+        console.error('User not authenticated for call.');
         alert('You must be logged in to join a call.');
         router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
       } else if (!channelName) {
-        console.error("Channel name is missing from route.");
+        console.error('Channel name is missing from route.');
         alert('Invalid call link.');
-        router.push('/chat');
+        router.push('/teacher/doubt_solver');
       }
     };
 
@@ -100,7 +104,7 @@ export default function CallPage() {
 
   useEffect(() => {
     if (!videoCall) {
-      router.push('/chat');
+      router.push('/teacher/doubt_solver');
     }
   }, [videoCall, router]);
 
@@ -123,13 +127,13 @@ export default function CallPage() {
   }
 
   if (!token || !user) {
-       return (
-          <div className="flex h-screen items-center justify-center bg-gray-100">
-             <Loader2 className="h-16 w-16 animate-spin text-primary" />
-             <p className="ml-4 text-lg font-medium text-gray-700">Preparing call...</p>
-          </div>
-       );
-   }
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        <p className="ml-4 text-lg font-medium text-gray-700">Preparing call...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
@@ -137,15 +141,15 @@ export default function CallPage() {
         <AgoraUIKit
           rtcProps={{
             appId: process.env.NEXT_PUBLIC_AGORA_APP_ID!,
-            channel: channelName,
-            token: token,
+            channel: channelName as string, // ✅ assert string for the component prop
+            token,
             uid: user.uid,
             role: 'publisher',
           }}
           callbacks={{
             EndCall: async () => {
               try {
-                await updateDoc(doc(db, 'doubts', channelName), { callActive: false });
+                await updateDoc(doc(db, 'doubts', channelName as string), { callActive: false });
               } catch (e) {
                 console.warn('Failed to clear callActive on EndCall:', e);
               }
@@ -158,7 +162,7 @@ export default function CallPage() {
         />
       ) : (
         <div className="flex h-screen items-center justify-center bg-gray-100">
-           <p className="text-lg font-medium text-gray-700">Call ended. Redirecting...</p>
+          <p className="text-lg font-medium text-gray-700">Call ended. Redirecting...</p>
         </div>
       )}
     </div>
