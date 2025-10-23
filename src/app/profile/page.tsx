@@ -208,18 +208,23 @@ function ProfilePage() {
           </div>
 
           <div className="max-w-2xl mx-auto space-y-6">
-
             {/* Account Info Card */}
-            <Card className="bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200 relative overflow-hidden">
-              <BookOpen className="absolute top-2 left-2 w-6 h-6 text-pink-300 opacity-50" />
-              <Pencil className="absolute bottom-2 right-2 w-6 h-6 text-yellow-300 opacity-50" />
-              <CardHeader>
+            <Card className="bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200 relative overflow-hidden break-words">
+              <BookOpen
+                className="absolute top-2 left-2 w-6 h-6 text-pink-300 opacity-50 pointer-events-none select-none hidden sm:block"
+                aria-hidden="true"
+              />
+              <Pencil
+                className="absolute bottom-2 right-2 w-6 h-6 text-yellow-300 opacity-50 pointer-events-none select-none hidden sm:block"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative z-10">
                 <CardTitle><T>Account Information</T></CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 relative z-10">
                 <div>
                   <Label><T>Email</T></Label>
-                  <p className="text-lg font-semibold">{user.email}</p>
+                  <p className="text-lg font-semibold break-words">{user.email}</p>
                 </div>
                 <div>
                   <Label><T>Role</T></Label>
@@ -229,13 +234,16 @@ function ProfilePage() {
             </Card>
 
             {/* Change Class Card */}
-            <Card className="bg-gradient-to-r from-green-200 via-teal-200 to-blue-200 relative overflow-hidden">
-              <Lightbulb className="absolute top-2 right-2 w-6 h-6 text-yellow-400 opacity-50" />
-              <CardHeader>
+            <Card className="bg-gradient-to-r from-green-200 via-teal-200 to-blue-200 relative overflow-hidden break-words">
+              <Lightbulb
+                className="absolute top-2 right-2 w-6 h-6 text-yellow-400 opacity-50 pointer-events-none select-none hidden sm:block"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative z-10">
                 <CardTitle><T>Change Class</T></CardTitle>
                 <CardDescription><T>Update your current class from the dropdown below.</T></CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative z-10">
                 {isClassLoading ? (
                   <div className="flex items-center justify-center py-6 text-sm text-gray-600">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> <T>Loading your class...</T>
@@ -279,15 +287,18 @@ function ProfilePage() {
             </Card>
 
             {/* Install App Card */}
-            <Card className="bg-gradient-to-r from-purple-200 via-pink-200 to-orange-200 relative overflow-hidden">
-              <Download className="absolute top-2 left-2 w-6 h-6 text-purple-300 opacity-50" />
-              <CardHeader>
+            <Card className="bg-gradient-to-r from-purple-200 via-pink-200 to-orange-200 relative overflow-hidden break-words">
+              <Download
+                className="absolute top-2 left-2 w-6 h-6 text-purple-300 opacity-50 pointer-events-none select-none hidden sm:block"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative z-10">
                 <CardTitle><T>Download App</T></CardTitle>
                 <CardDescription>
                   <T>Install Shiksha Setu on your device for a better experience, including offline access.</T>
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative z-10">
                 <Button onClick={handleInstallClick}>
                   <Download className="mr-2 h-4 w-4" /> <T>Install App</T>
                 </Button>
@@ -300,15 +311,18 @@ function ProfilePage() {
             </Card>
 
             {/* Change Password Card */}
-            <Card className="bg-gradient-to-r from-yellow-200 via-pink-200 to-red-200 relative overflow-hidden">
-              <Pencil className="absolute top-2 right-2 w-6 h-6 text-pink-300 opacity-50" />
-              <CardHeader>
+            <Card className="bg-gradient-to-r from-yellow-200 via-pink-200 to-red-200 relative overflow-hidden break-words">
+              <Pencil
+                className="absolute top-2 right-2 w-6 h-6 text-pink-300 opacity-50 pointer-events-none select-none hidden sm:block"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative z-10">
                 <CardTitle><T>Change Password</T></CardTitle>
                 <CardDescription>
                   <T>Enter a new password below to change your current password.</T>
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative z-10">
                 <form onSubmit={handleChangePassword} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="new-password"><T>New Password</T></Label>
@@ -339,13 +353,16 @@ function ProfilePage() {
             </Card>
 
             {/* Logout Card */}
-            <Card className="bg-gradient-to-r from-red-200 via-pink-200 to-orange-200 relative overflow-hidden">
-              <LogOut className="absolute top-2 right-2 w-6 h-6 text-red-400 opacity-50" />
-              <CardHeader>
+            <Card className="bg-gradient-to-r from-red-200 via-pink-200 to-orange-200 relative overflow-hidden break-words">
+              <LogOut
+                className="absolute top-2 right-2 w-6 h-6 text-red-400 opacity-50 pointer-events-none select-none hidden sm:block"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative z-10">
                 <CardTitle><T>Log Out</T></CardTitle>
                 <CardDescription><T>Sign out of your account securely.</T></CardDescription>
               </CardHeader>
-              <CardContent className="flex justify-center">
+              <CardContent className="flex justify-center relative z-10">
                 <Button
                   onClick={async () => {
                     try {

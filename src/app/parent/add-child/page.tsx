@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { T } from "@/components/T";
+import { useTranslation } from "@/context/TranslationContext";
 
 const schema = z.object({
   childEmail: z.string().email("Enter a valid email"),
@@ -24,33 +26,11 @@ type PendingChild = {
   className?: string;
 };
 
-// 🌈 Pastel background + doodles
+// 🌈 Background
 function PlayfulBackdrop() {
   return (
     <div className="absolute inset-0 -z-10 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_12%_12%,#FFE4E6_0%,transparent_60%),radial-gradient(70%_70%_at_88%_10%,#E0E7FF_0%,transparent_55%),radial-gradient(60%_60%_at_14%_88%,#D1FAE5_0%,transparent_55%),radial-gradient(60%_60%_at_86%_86%,#FEF9C3_0%,transparent_55%)]" />
-
-      <svg
-        className="absolute -top-24 -left-24 w-96 h-96 opacity-[0.25] blur-[1px]"
-        viewBox="0 0 200 200"
-      >
-        <path
-          fill="#FDE68A"
-          d="M43.9,-66.9C58.1,-58.9,70.4,-46,76.2,-31.2C82,-16.5,81.4,-0,75.9,14.8C70.5,29.7,60.2,42.9,47.9,53.5C35.7,64.1,21.5,72.1,6.2,73.6C-9,75.1,-18,69.9,-31.5,64.1C-45,58.4,-63,52,-69.9,40C-76.8,27.9,-72.5,10.2,-65.9,-4.8C-59.4,-19.8,-50.5,-32.1,-40.6,-42.6C-30.8,-53.1,-19.9,-61.8,-6.5,-69C7,-76.2,21.9,-81.8,43.9,-66.9Z"
-          transform="translate(100 100)"
-        />
-      </svg>
-
-      <svg
-        className="absolute -bottom-24 -right-24 w-[520px] h-[520px] opacity-[0.25]"
-        viewBox="0 0 200 200"
-      >
-        <path
-          fill="#A7F3D0"
-          d="M39.6,-60.3C51.8,-51.3,62.8,-41.7,73.1,-28.9C83.5,-16.1,93.2,-0.1,92.7,15.9C92.1,32,81.3,48.2,66.7,61.2C52.1,74.2,33.6,83.9,14.3,87.6C-5,91.3,-25.2,89,-40.1,79.2C-55,69.4,-64.5,52.2,-70.9,36.1C-77.2,20,-80.3,5.1,-78.2,-10.3C-76.1,-25.6,-68.8,-41.3,-56.8,-50.8C-44.9,-60.3,-28.4,-63.4,-12.9,-64.3C2.6,-65.3,18.1,-64.1,39.6,-60.3Z"
-          transform="translate(100 100)"
-        />
-      </svg>
     </div>
   );
 }
@@ -58,14 +38,13 @@ function PlayfulBackdrop() {
 export default function AddChildPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-
   const [pendingChild, setPendingChild] = useState<PendingChild | null>(null);
   const [linking, setLinking] = useState(false);
-
   const [linkedCount, setLinkedCount] = useState<number>(0);
   const [loadingLinkedCount, setLoadingLinkedCount] = useState(true);
 
   const router = useRouter();
+  const { translate } = useTranslation();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -99,7 +78,8 @@ export default function AddChildPage() {
     const email = values.childEmail.trim().toLowerCase();
     const student = await getStudentByEmail(email);
     if (!student) {
-      alert("No student found with that email.");
+      const msg = await translate("No student found with that email.");
+      alert(msg);
       setPendingChild(null);
       return;
     }
@@ -124,8 +104,12 @@ export default function AddChildPage() {
       await linkParentToChild(user.uid, pendingChild.uid);
       setLinkedCount((c) => (c > 0 ? c : 1));
 
-      const addMore = window.confirm("Child linked successfully. Do you want to add another?");
-      if (addMore) {
+      const msg = await translate("Child linked successfully!");
+      alert(msg);
+
+      const addMoreMsg = await translate("Do you want to add another child?");
+      const addMoreConfirm = window.confirm(addMoreMsg);
+      if (addMoreConfirm) {
         setPendingChild(null);
         reset({ childEmail: "" });
       } else {
@@ -137,7 +121,11 @@ export default function AddChildPage() {
   }
 
   if (authLoading || !user || loadingLinkedCount) {
-    return <div className="p-6 text-center text-slate-700 animate-pulse">Loading…</div>;
+    return (
+      <div className="p-6 text-center text-slate-700 animate-pulse">
+        <T>Loading…</T>
+      </div>
+    );
   }
 
   const goToDashboardDisabled = linkedCount === 0;
@@ -149,7 +137,7 @@ export default function AddChildPage() {
       <Card className="w-full max-w-md p-6 rounded-3xl bg-white/70 backdrop-blur-md shadow-lg border border-white/60 space-y-4">
         <CardHeader>
           <CardTitle className="text-2xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-indigo-400 to-emerald-400">
-            Add Child Details 👨‍👩‍👧
+            <T>Add Child Details 👨‍👩‍👧</T>
           </CardTitle>
         </CardHeader>
 
@@ -158,7 +146,7 @@ export default function AddChildPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="childEmail" className="font-medium text-slate-700">
-                  Child’s Email
+                  <T>Child’s Email</T>
                 </Label>
                 <Input
                   id="childEmail"
@@ -174,7 +162,7 @@ export default function AddChildPage() {
                 type="submit"
                 className="w-full rounded-full bg-gradient-to-r from-rose-400 via-indigo-400 to-emerald-400 text-white font-semibold hover:shadow-md transition"
               >
-                Fetch Student ✨
+                <T>Fetch Student ✨</T>
               </Button>
             </form>
           )}
@@ -186,7 +174,7 @@ export default function AddChildPage() {
                   {pendingChild.name}
                 </p>
                 <p className="text-slate-600">
-                  Class: {pendingChild.className ?? "—"}
+                  <T>Class:</T> {pendingChild.className ?? "—"}
                 </p>
               </div>
 
@@ -196,14 +184,14 @@ export default function AddChildPage() {
                   disabled={linking}
                   className="rounded-full bg-gradient-to-r from-emerald-400 to-blue-400 text-white font-medium px-6 hover:shadow"
                 >
-                  {linking ? "Linking..." : "OK"}
+                  {linking ? <T>Linking...</T> : <T>OK</T>}
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={() => setPendingChild(null)}
                   className="rounded-full border border-slate-300 text-slate-700 bg-white hover:bg-slate-50"
                 >
-                  Change Email
+                  <T>Change Email</T>
                 </Button>
               </div>
             </div>
@@ -213,9 +201,11 @@ export default function AddChildPage() {
 
       <div className="mt-6 flex items-center justify-between w-full max-w-md text-sm text-slate-700">
         <p>
-          {goToDashboardDisabled
-            ? "No child linked yet — link a child to enable the dashboard."
-            : "You have linked child account(s). You can go to the dashboard."}
+          {goToDashboardDisabled ? (
+            <T>No child linked yet — link a child to enable the dashboard.</T>
+          ) : (
+            <T>You have linked child account(s). You can go to the dashboard.</T>
+          )}
         </p>
         <Button
           onClick={() => router.push("/parent/dashboard")}
@@ -226,7 +216,7 @@ export default function AddChildPage() {
               : "bg-gradient-to-r from-rose-400 via-indigo-400 to-emerald-400 text-white hover:shadow"
           }`}
         >
-          Go to Dashboard
+          <T>Go to Dashboard</T>
         </Button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { T } from '@/components/T'; // Added Import
+import { T } from '@/components/T';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
@@ -9,7 +9,7 @@ import {
   updateProfile,
   sendEmailVerification,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore';
 
 type Role = 'student' | 'teacher' | 'parent' | '';
 
@@ -55,7 +55,6 @@ export default function VidyaSetuRegistration() {
     e.preventDefault();
     if (loading) return;
 
-    // Validation checks remain the same
     if (!formData.role) return alert('Please select a role.');
     if (formData.role === 'teacher' && formData.className.length === 0) {
       return alert('Teachers must choose at least one class.');
@@ -75,6 +74,17 @@ export default function VidyaSetuRegistration() {
 
     try {
       setLoading(true);
+
+      // 🔍 Check if child's email exists in Firestore if role is 'parent'
+      if (formData.role === 'parent') {
+        const q = query(collection(db, 'users'), where('email', '==', formData.childEmail));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+          alert("No student found with that child's email. Please ensure the child is registered first.");
+          setLoading(false);
+          return;
+        }
+      }
 
       const cred = await createUserWithEmailAndPassword(
         auth,
@@ -123,10 +133,9 @@ export default function VidyaSetuRegistration() {
 
       try {
         await sendEmailVerification(cred.user);
-      } catch { /* non-blocking */ }
+      } catch {}
 
       localStorage.setItem('user', JSON.stringify(formData));
-
       alert('✅ Registered successfully! Please verify your email if requested.');
       router.push('/login');
     } catch (err: any) {
@@ -157,16 +166,15 @@ export default function VidyaSetuRegistration() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#EBDDFB] via-[#F3E8FF] to-[#D8D0FF] p-6">
-      {/* Decorative blobs */}
       <div className="absolute inset-0 overflow-hidden opacity-40 pointer-events-none">
         <div className="absolute -top-10 -left-10 w-72 h-72 bg-purple-300 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-300 rounded-full blur-3xl animate-pulse delay-700"></div>
         <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-pink-200 rounded-full blur-3xl opacity-40 animate-pulse delay-1000"></div>
       </div>
 
-      <div className="relative z-10 bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl w-full max-w-md p-8 border border-white/40 transition-transform transform hover:scale-[1.02] duration-300 ease-in-out">
+      <div className="relative z-10 bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl w-full max-w-md p-8 border border-white/40">
         <h1 className="text-4xl font-extrabold text-center text-purple-700 mb-3">
-          Vidya Setu {/* Brand Name */}
+          Vidya Setu
         </h1>
         <p className="text-center text-gray-500 mb-6">
           <T>Join the bridge to better learning</T> 🌱
@@ -187,7 +195,7 @@ export default function VidyaSetuRegistration() {
                 }));
               }}
               required
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70"
+              className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400"
             >
               <option value=""><T>Select Role</T></option>
               <option value="student"><T>Student</T></option>
@@ -204,125 +212,51 @@ export default function VidyaSetuRegistration() {
               </label>
               <input
                 type="text" name="name" value={formData.name} onChange={handleChange} required
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70 placeholder-gray-400"
+                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400"
                 placeholder={formData.role === 'parent' ? "Enter parent's full name" : 'Enter your full name'}
               />
             </div>
           )}
 
-          {/* Student Specific */}
-          {formData.role === 'student' && (
-            <>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Class</T></label>
-                <select name="classNameSingle" value={formData.className[0] || ''} onChange={e => handleSingleClassSelect(e.target.value)} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Select Class</T></option>
-                  {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Email ID</T></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter your email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
-                <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Choose Language</T></option>
-                  {languageOptions.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-            </>
-          )}
-
-          {/* Teacher Specific */}
-          {formData.role === 'teacher' && (
-            <>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-2"><T>Classes</T></label>
-                <div className="flex flex-wrap gap-4">
-                  {classOptions.map(cls => (
-                    <label key={cls} className="flex items-center gap-2">
-                      <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={formData.className.includes(cls)} onChange={e => toggleTeacherClass(cls, e.target.checked)} />
-                      <span>{cls}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Subject</T></label>
-                <select name="subject" value={formData.subject} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Select Subject</T></option>
-                  {subjectOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Phone Number</T></label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required inputMode="tel" minLength={7} maxLength={15} className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="e.g., 9876543210" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Email ID</T></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter your email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
-              </div>
-
-              {/* HIDDEN per request: teacher language dropdown (kept in code, just commented out) */}
-              {/*
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
-                <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Choose Language</T></option>
-                  {languageOptions.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-              */}
-            </>
-          )}
-
           {/* Parent Specific */}
           {formData.role === 'parent' && (
             <>
-              {/* Parent details FIRST */}
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Phone Number</T></label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required inputMode="tel" minLength={7} maxLength={15} className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="e.g., 9876543210" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Email</T></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter parent's email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required inputMode="tel" minLength={7} maxLength={15} className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400" placeholder="e.g., 9876543210" />
               </div>
 
-              {/* Then child details */}
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Email</T></label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400" placeholder="Enter parent's email" />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
+                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400" placeholder="Create a password" />
+              </div>
+
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Child's Name</T></label>
-                <input type="text" name="childName" value={formData.childName} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter child's full name" />
+                <input type="text" name="childName" value={formData.childName} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400" placeholder="Enter child's full name" />
               </div>
+
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Child's Email</T></label>
-                <input type="email" name="childEmail" value={formData.childEmail} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter child's email" />
+                <input type="email" name="childEmail" value={formData.childEmail} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400" placeholder="Enter child's email" />
               </div>
+
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Child's Class</T></label>
-                <select name="classNameSingle" value={formData.className[0] || ''} onChange={e => handleSingleClassSelect(e.target.value)} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
+                <select name="classNameSingle" value={formData.className[0] || ''} onChange={e => handleSingleClassSelect(e.target.value)} required className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400">
                   <option value=""><T>Select Class</T></option>
-                  {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                  {['7th','8th','9th'].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
-              {/* Parent language stays visible unless you want it hidden too */}
               <div>
                 <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
-                <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
+                <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 bg-white/70 focus:ring-2 focus:ring-purple-400">
                   <option value=""><T>Choose Language</T></option>
                   {languageOptions.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
@@ -332,11 +266,7 @@ export default function VidyaSetuRegistration() {
 
           {/* Submit */}
           {formData.role && (
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold rounded-lg py-3 mt-4 shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-300 disabled:opacity-60"
-            >
+            <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold rounded-lg py-3 mt-4 shadow-md hover:brightness-110 transition-all duration-300 disabled:opacity-60">
               {loading ? <T>Registering...</T> : <T>Register</T>}
             </button>
           )}
