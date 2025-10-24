@@ -2,118 +2,130 @@
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useRouter } from 'next/navigation';
-import withAuth from '@/components/auth/withAuth';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarClock, FileUp, Video, Users } from 'lucide-react';
+import Link from 'next/link';
+import { MessageCircle, Users } from 'lucide-react';
 
-function TeacherCommunity() {
-  const { user } = useAuth();
+type Activity = {
+  type: 'doubt' | 'community';
+  title: string;
+  status?: string;
+  time: string;
+};
+
+export default function TeacherDashboard() {
+  const { user, loading } = useAuth();
   const router = useRouter();
+  const [recentActivity, setRecentActivity] = useState<Activity[] | null>(null);
 
-  const tabs = [
-    {
-      title: 'Schedule a Workshop',
-      desc: 'Plan and organize interactive workshops for your students.',
-      icon: CalendarClock,
-      color: 'from-[#E5DBFF] to-[#F0E9FF]',
-      link: '/teacher/community/schedule_workshop',
-    },
-    {
-      title: 'Create a Test',
-      desc: 'Create and share assessments with your class easily.',
-      icon: FileUp,
-      color: 'from-[#D9F4EC] to-[#E9FFF8]',
-      link: '/teacher/community/upload_tests',
-    },
-    {
-      title: 'Upload Videos',
-      desc: 'Share recorded lessons and helpful video resources.',
-      icon: Video,
-      color: 'from-[#FFE3ED] to-[#FFF1F6]',
-      link: '/teacher/community/upload_videos',
-    },
-    {
-      title: 'View Submissions',
-      desc: 'Check student test submissions and their scores.',
-      icon: Users,
-      color: 'from-[#FDE7C9] to-[#FFF3E2]',
-      link: '/teacher/community/view_submission',
-    },
-  ];
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+      return;
+    }
+
+    const t = setTimeout(() => {
+      setRecentActivity([
+        { type: 'doubt', title: 'Solved doubt in Physics: Motion', status: 'Resolved', time: '1 day ago' },
+        { type: 'community', title: 'Shared post in Teaching Innovations', time: '3 days ago' },
+      ]);
+    }, 700);
+
+    return () => clearTimeout(t);
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return <p className="text-center mt-20 text-gray-500">Loading...</p>;
+  }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-[#ECE7FF] via-[#F6F3FF] to-[#E3F1FF] text-gray-800 overflow-hidden">
-      <svg className="pointer-events-none absolute -top-16 -left-10 w-72 h-72 opacity-70" viewBox="0 0 200 200" fill="none">
-        <path d="M30 100 q40 -20 70 0 q-30 -20 -70 0" stroke="#B9C8FF" strokeWidth="4" fill="none" />
-        <path d="M100 100 q40 -20 70 0 q-30 -20 -70 0" stroke="#C9B8FF" strokeWidth="4" fill="none" />
-        <rect x="120" y="20" width="50" height="14" rx="3" fill="#E7DFFF" />
-        <path d="M125 24 h40" stroke="#CFC2FF" strokeWidth="2" />
-        <path d="M130 24 v10 M140 24 v10 M150 24 v10 M160 24 v10" stroke="#CFC2FF" strokeWidth="2" />
-      </svg>
-      <svg className="pointer-events-none absolute bottom-0 right-0 w-[24rem] h-[24rem] opacity-70" viewBox="0 0 300 300" fill="none">
-        <path d="M40 80 q60 30 140 -20 q40 -20 90 0" stroke="#B6E3D2" strokeWidth="5" fill="none" strokeLinecap="round" />
-        <rect x="210" y="220" width="26" height="8" rx="3" fill="#FFDAD5" />
-        <path d="M210 220 l-10 10 l36 0 l-10 -10 z" fill="#FFC7BE" />
-        <circle cx="220" cy="200" r="10" fill="#FBE2A8" />
-      </svg>
-      <div className="pointer-events-none absolute -top-20 -left-20 w-96 h-96 bg-[#F1EBFF] rounded-full blur-3xl opacity-60 animate-pulse" />
-      <div className="pointer-events-none absolute bottom-0 right-0 w-[28rem] h-[28rem] bg-[#DFF3FF] rounded-full blur-3xl opacity-60 animate-pulse delay-700" />
+    <div className="relative min-h-screen w-full bg-gradient-to-br from-[#FFF1F8] via-[#E8FFF8] to-[#FFF9E7] text-gray-800 overflow-hidden">
+      {/* Background Doodles - corners/edges only */}
+      <div className="absolute top-5 left-5 w-16 h-16 bg-yellow-200 rounded-full opacity-40" />
+      <div className="absolute top-10 right-10 w-12 h-12 bg-pink-200 rounded-full opacity-40" />
+      <div className="absolute bottom-10 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-30" />
+      <div className="absolute bottom-10 right-10 w-24 h-24 bg-cyan-200 rounded-full opacity-25" />
+      <div className="absolute top-1/2 left-5 w-12 h-12 bg-green-200 rounded-full opacity-30" />
 
-      <header className="sticky top-0 z-20 backdrop-blur-2xl bg-gradient-to-r from-white/60 via-white/50 to-white/60 border-b border-white/40 shadow-md">
-        <div className="relative max-w-6xl mx-auto px-6 py-5 flex items-center justify-center">
-          <Button
-            variant="outline"
-            className="absolute left-6 bg-white/70 hover:bg-[#9B87F5] hover:text-white text-[#6B5BBE] font-medium border border-[#9B87F5] rounded-xl transition-all duration-200"
-            onClick={() => router.push('/teacher')}
-          >
-            ← Back
-          </Button>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm text-center">
-            Teacher Community
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+        {/* Hero / Welcome Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-purple-700 drop-shadow-lg mb-4">
+            Welcome, {user.name || user.displayName || 'Teacher'} 👋
           </h1>
-        </div>
-      </header>
-
-      <main className="relative z-10 max-w-6xl mx-auto p-6">
-        <div className="relative mb-12 text-center">
-          <h2 className="text-2xl font-semibold text-[#5A4DA8]">
-            Create • Guide • Inspire
-          </h2>
-          <p className="text-[#5A4DA8]/80 text-base mt-1 max-w-2xl mx-auto">
-            Manage your teaching content — schedule workshops, upload tests, share videos, and view submission.
+          <p className="text-lg text-gray-700 max-w-2xl mx-auto">
+            Engage with your students, solve doubts, and connect with the teaching community in one place!
           </p>
-          <svg className="absolute -top-6 right-1/3 w-16 h-16 opacity-70" viewBox="0 0 120 120" fill="none">
-            <path d="M20 80 L60 50 L100 80" stroke="#A6C7FF" strokeWidth="5" strokeLinecap="round" />
-            <circle cx="60" cy="40" r="7" fill="#FFD7E5" />
-          </svg>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {tabs.map((tab, idx) => {
-            const Icon = tab.icon;
-            return (
-              <div
-                key={idx}
-                onClick={() => router.push(tab.link)}
-                className={`cursor-pointer relative overflow-hidden rounded-3xl bg-gradient-to-br ${tab.color} p-8 shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1.5 hover:scale-[1.02] backdrop-blur-md`}
-              >
-                <svg className="pointer-events-none absolute -top-5 -right-5 w-24 h-24 opacity-40" viewBox="0 0 100 100" fill="none">
-                  <path d="M10 50 Q 25 30, 40 50 T 70 50" stroke="#C9B8FF" strokeWidth="3" fill="none" />
-                  <circle cx="80" cy="22" r="6" fill="#BFE7D8" />
-                </svg>
-                <Icon className="h-12 w-12 text-[#4E3FA3] mb-4" />
-                <h2 className="text-2xl font-semibold text-[#3E2F9A] mb-2">{tab.title}</h2>
-                <p className="text-[#4E3FA3]/80 text-sm">{tab.desc}</p>
-                <Button className="mt-6 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110">
-                  Open
-                </Button>
-              </div>
-            );
-          })}
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          {/* Doubt Solver Card */}
+          <Link href="/teacher/doubt_solver">
+            <div className="relative p-8 rounded-3xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-transform cursor-pointer overflow-hidden bg-gradient-to-br from-blue-200 via-blue-100 to-blue-50 border border-blue-300/40 backdrop-blur-sm">
+              <MessageCircle className="absolute -top-10 -right-10 h-40 w-40 text-blue-300 opacity-30 rotate-12" />
+              <MessageCircle className="h-14 w-14 text-blue-700 mb-4" />
+              <h2 className="text-2xl font-semibold mb-2 text-blue-800">Doubt Solver</h2>
+              <p className="text-blue-900 mb-4">Quickly answer and manage student queries.</p>
+              <Button className="bg-gradient-to-r from-blue-300 via-blue-200 to-blue-100 hover:from-blue-400 hover:via-blue-300 hover:to-blue-200 text-blue-900 transition-transform hover:scale-105 shadow-md">
+                Open Doubt Solver
+              </Button>
+            </div>
+          </Link>
+
+          {/* Community Card */}
+          <Link href="/teacher/community">
+            <div className="relative p-8 rounded-3xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-transform cursor-pointer overflow-hidden bg-gradient-to-br from-pink-200 via-pink-100 to-purple-50 border border-pink-300/40 backdrop-blur-sm">
+              <Users className="absolute -bottom-10 -right-10 h-40 w-40 text-pink-300 opacity-30 rotate-12" />
+              <Users className="h-14 w-14 text-pink-700 mb-4" />
+              <h2 className="text-2xl font-semibold mb-2 text-pink-800">Teacher Community</h2>
+              <p className="text-pink-900 mb-4">Share ideas and collaborate with fellow educators.</p>
+              <Button className="bg-gradient-to-r from-pink-300 via-pink-200 to-purple-100 hover:from-pink-400 hover:via-pink-300 hover:to-purple-200 text-pink-900 transition-transform hover:scale-105 shadow-md">
+                Join Community
+              </Button>
+            </div>
+          </Link>
         </div>
-      </main>
+
+        {/* Recent Activity Section */}
+        <section>
+          <h2 className="text-3xl font-bold mb-6 text-center text-purple-700 drop-shadow-lg">
+            Recent Activity
+          </h2>
+          {recentActivity === null ? (
+            <p className="text-center text-gray-500">Loading activities...</p>
+          ) : recentActivity.length === 0 ? (
+            <p className="text-center text-gray-500">No recent activities</p>
+          ) : (
+            <div className="flex gap-4 overflow-x-auto py-4">
+              {recentActivity.map((activity, index) => (
+                <div
+                  key={index}
+                  className={`flex-shrink-0 w-72 p-4 rounded-2xl shadow hover:shadow-lg transition border border-opacity-20 ${
+                    activity.type === 'doubt'
+                      ? 'bg-gradient-to-br from-blue-200 via-blue-100 to-blue-50 border border-blue-300/40'
+                      : 'bg-gradient-to-br from-pink-100 via-pink-50 to-purple-100 border border-pink-300/30'
+                  }`}
+                >
+                  {activity.type === 'doubt' ? (
+                    <>
+                      <p className="font-semibold text-blue-800">{activity.title}</p>
+                      <p className="text-blue-900">Status: {activity.status}</p>
+                      <p className="text-sm text-blue-700">{activity.time}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-pink-700">{activity.title}</p>
+                      <p className="text-sm text-pink-600">{activity.time}</p>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
-
-export default withAuth(TeacherCommunity, ['teacher']);

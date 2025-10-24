@@ -102,11 +102,16 @@ export default function CallPage() {
     fetchToken();
   }, [channelName, user, authLoading, router]);
 
+  // 🔁 On local end-call (state flips to false), route based on role
   useEffect(() => {
     if (!videoCall) {
-      router.push('/teacher/doubt_solver');
+      const target =
+        (user?.role === 'student')
+          ? '/student/ask_question'
+          : '/teacher/doubt_solver';
+      router.push(target);
     }
-  }, [videoCall, router]);
+  }, [videoCall, router, user?.role]);
 
   if (authLoading) {
     return (
@@ -153,6 +158,7 @@ export default function CallPage() {
               } catch (e) {
                 console.warn('Failed to clear callActive on EndCall:', e);
               }
+              // Flip state; the effect above will route based on role
               setVideoCall(false);
             },
           }}
