@@ -8,21 +8,43 @@ import {
   where,
   onSnapshot,
   orderBy,
-  doc
 } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageCircle, Phone, Loader2, ArrowLeft } from 'lucide-react'; // Added ArrowLeft for back button icon
+import { MessageCircle, Phone, Loader2 } from 'lucide-react';
 import { addTeacherMessage } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
-// --- API Translation Functions ---
-async function translateViaApi(text: string, targetLang: string, sourceLang?: string): Promise<string> {
+/* ---------------------------------------------------------
+   Lightweight client-side language detector
+   - 'hi' if any Devanagari chars
+   - 'en' if ASCII-ish and no Devanagari
+   - otherwise undefined (let API handle)
+--------------------------------------------------------- */
+function detectLang(str: string | undefined): 'en' | 'hi' | undefined {
+  if (!str) return undefined;
+  const hasDevanagari = /[\u0900-\u097F]/.test(str);
+  if (hasDevanagari) return 'hi';
+  const asciiish = /^[\x00-\x7F\s.,;:'"?!()\[\]\-_/\\0-9A-Za-z]+$/.test(str);
+  if (asciiish) return 'en';
+  return undefined;
+}
+
+/* ---------------------------------------------------------
+   API Translation Helpers
+--------------------------------------------------------- */
+async function translateViaApi(
+  text: string,
+  targetLang: string,
+  sourceLang?: string
+): Promise<string> {
   if (!text?.trim()) return '';
-  const normSource = sourceLang?.toLowerCase() || '';
-  const normTarget = targetLang?.toLowerCase() || '';
-  if (normTarget === normSource || (normTarget === 'en' && !sourceLang)) {
+
+  // Short-circuit if already in target (using detector as a guard)
+  const detected = detectLang(text);
+  if ((detected && detected === targetLang.toLowerCase()) ||
+      (targetLang.toLowerCase() === 'en' && detected === 'en')) {
     return text;
   }
 
@@ -48,16 +70,22 @@ async function translateViaApi(text: string, targetLang: string, sourceLang?: st
 }
 
 async function toEnglishViaApi(input: string, sourceLang?: string): Promise<string> {
-  if (!input || sourceLang?.toLowerCase() === 'en') return input;
-  return translateViaApi(input, 'en', sourceLang);
+  if (!input) return input;
+  const detected = detectLang(input);
+  if (detected === 'en') return input;
+  return translateViaApi(input, 'en', sourceLang ?? detected);
 }
 
 async function fromEnglishViaApi(input: string, targetLang: string): Promise<string> {
-  if (!input || targetLang?.toLowerCase() === 'en') return input;
-  return translateViaApi(input, targetLang, 'en');
+  if (!input) return input;
+  const tgt = (targetLang || 'en').toLowerCase();
+  if (tgt === 'en') return input;
+  return translateViaApi(input, tgt, 'en');
 }
-// --- End API Translation Functions ---
 
+/* ---------------------------------------------------------
+   Page Component
+--------------------------------------------------------- */
 export default function DoubtSolverPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -67,15 +95,19 @@ export default function DoubtSolverPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
+  // EN versions state
   const [selectedDoubtEnglish, setSelectedDoubtEnglish] = useState<string>('');
   const [translatedMsgMap, setTranslatedMsgMap] = useState<Record<string, string>>({});
   const [previewEnMap, setPreviewEnMap] = useState<Record<string, string>>({});
   const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
 
+  // Teacher profile fields
   const teacherSubject = (user as any)?.subject || 'Science';
   const teacherClass = (user as any)?.classGrade || null;
 
-  // --- Load doubts ---
+  /* -------------------------------------------------------
+     Load doubts (Translate previews proactively)
+  ------------------------------------------------------- */
   useEffect(() => {
     if (loading || !user) return;
 
@@ -98,34 +130,51 @@ export default function DoubtSolverPage() {
             });
 
           setDoubts(data);
-          let previewsChanged = false;
-          const nextPreviews = { ...currentPreviews };
+
+          let changed = false;
+          const next = { ...currentPreviews };
 
           for (const d of data) {
-            if (nextPreviews[d.id] !== undefined) continue;
+            if (next[d.id] !== undefined) continue;
 
-            const baseText = d.text_original || d.text || d.text_en || '';
-            if (baseText && d.language !== 'en') {
-              nextPreviews[d.id] = '(translating preview...)';
-              previewsChanged = true;
-              toEnglishViaApi(baseText, d.language).then((translatedText) => {
-                setPreviewEnMap((prevMap) => ({ ...prevMap, [d.id]: translatedText }));
+            const baseText: string =
+              (d.text_original || d.text || d.text_en || '').toString();
+
+            if (!baseText) {
+              next[d.id] = '';
+              changed = true;
+              continue;
+            }
+
+            // Use detector FIRST; ignore incorrect Firestore language flags
+            const detected = detectLang(baseText);
+            const shouldTranslate = detected !== 'en';
+
+            if (shouldTranslate) {
+              next[d.id] = '(translating preview...)';
+              changed = true;
+              toEnglishViaApi(baseText, detected).then((en) => {
+                setPreviewEnMap((prev) => ({ ...prev, [d.id]: en }));
               });
             } else {
-              nextPreviews[d.id] = baseText || '';
-              if (currentPreviews[d.id] === undefined) previewsChanged = true;
+              next[d.id] = baseText; // already English
+              changed = true;
             }
           }
-          return previewsChanged ? nextPreviews : currentPreviews;
+
+          return changed ? next : currentPreviews;
         });
       },
       (err) => console.error('onSnapshot(doubts) error:', err)
     );
 
     return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, teacherSubject, teacherClass]);
 
-  // --- Load messages ---
+  /* -------------------------------------------------------
+     Load messages & translate initial doubt
+  ------------------------------------------------------- */
   useEffect(() => {
     if (!selectedDoubt) {
       setMessages([]);
@@ -154,23 +203,32 @@ export default function DoubtSolverPage() {
     );
 
     (async () => {
-      const baseText = selectedDoubt?.text_original || selectedDoubt?.text || selectedDoubt?.text_en || '';
+      const baseText: string =
+        (selectedDoubt?.text_original ||
+          selectedDoubt?.text ||
+          selectedDoubt?.text_en ||
+          '') as string;
+
       if (!baseText) {
         setSelectedDoubtEnglish('(no text)');
         return;
       }
-      const initialLang = selectedDoubt?.language || 'en';
-      const translated =
-        initialLang.toLowerCase() === 'en'
-          ? baseText
-          : await toEnglishViaApi(baseText, initialLang);
-      setSelectedDoubtEnglish(translated);
+
+      const detected = detectLang(baseText);
+      if (detected === 'en') {
+        setSelectedDoubtEnglish(baseText);
+      } else {
+        const translated = await toEnglishViaApi(baseText, detected);
+        setSelectedDoubtEnglish(translated);
+      }
     })();
 
     return () => unsub();
   }, [selectedDoubt]);
 
-  // --- Translate student messages ---
+  /* -------------------------------------------------------
+     Translate incoming student messages
+  ------------------------------------------------------- */
   useEffect(() => {
     if (!selectedDoubt || !messages.length) return;
 
@@ -179,24 +237,32 @@ export default function DoubtSolverPage() {
       if (!isStudent) return;
 
       const msgId = msg.id;
-      if (translatedMsgMap[msgId] === undefined && !isTranslating[msgId]) {
-        const source = (msg.text_original || msg.text || '').trim();
-        const sourceLang = msg.language || selectedDoubt?.language || 'en';
+      if (translatedMsgMap[msgId] !== undefined || isTranslating[msgId]) return;
 
-        if (source && sourceLang.toLowerCase() !== 'en') {
-          setIsTranslating((prev) => ({ ...prev, [msgId]: true }));
-          toEnglishViaApi(source, sourceLang).then((en) => {
-            setTranslatedMsgMap((prev) => ({ ...prev, [msgId]: en }));
-            setIsTranslating((prev) => ({ ...prev, [msgId]: false }));
-          });
-        } else if (source) {
-          setTranslatedMsgMap((prev) => ({ ...prev, [msgId]: source }));
-        }
+      const source = (msg.text_original || msg.text || '').toString().trim();
+      if (!source) {
+        setTranslatedMsgMap((prev) => ({ ...prev, [msgId]: '(empty message)' }));
+        return;
       }
-    });
-  }, [messages, selectedDoubt]);
 
-  // --- Send message ---
+      const detected = detectLang(source);
+      if (detected === 'en') {
+        setTranslatedMsgMap((prev) => ({ ...prev, [msgId]: source }));
+        return;
+      }
+
+      setIsTranslating((prev) => ({ ...prev, [msgId]: true }));
+      toEnglishViaApi(source, detected).then((en) => {
+        setTranslatedMsgMap((prev) => ({ ...prev, [msgId]: en }));
+        setIsTranslating((prev) => ({ ...prev, [msgId]: false }));
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, selectedDoubt, translatedMsgMap, isTranslating]);
+
+  /* -------------------------------------------------------
+     Send teacher reply (translate to student's language)
+  ------------------------------------------------------- */
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedDoubt || !user) return;
 
@@ -204,7 +270,15 @@ export default function DoubtSolverPage() {
     setNewMessage('');
 
     try {
-      const studentLang = (selectedDoubt.language || 'en') as string;
+      // Prefer stored language, but fall back to detector on the initial doubt text
+      const baseText: string =
+        (selectedDoubt?.text_original ||
+          selectedDoubt?.text ||
+          selectedDoubt?.text_en ||
+          '') as string;
+      const detected = detectLang(baseText);
+      const studentLang = ((selectedDoubt.language as string) || detected || 'en').toLowerCase();
+
       const localized = await fromEnglishViaApi(englishInput, studentLang);
 
       await addTeacherMessage({
@@ -217,7 +291,7 @@ export default function DoubtSolverPage() {
     } catch (e: any) {
       console.error('Error sending message:', e);
       alert(e?.message || 'Failed to send your message.');
-      setNewMessage(englishInput);
+      setNewMessage(englishInput); // Restore on error
     }
   };
 
@@ -228,48 +302,43 @@ export default function DoubtSolverPage() {
       </div>
     );
 
-  // --- JSX Rendering ---
+  /* -------------------------------------------------------
+     UI
+  ------------------------------------------------------- */
+  const doubtCards = useMemo(() => {
+    return doubts.map((doubt) => {
+      const previewEN = previewEnMap[doubt.id] ?? '(loading preview...)';
+      return (
+        <Card
+          key={doubt.id}
+          className="cursor-pointer bg-white/80 border border-purple-100 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition"
+          onClick={() => setSelectedDoubt(doubt)}
+        >
+          <CardContent className="p-5">
+            <h2 className="text-lg font-semibold text-purple-700 mb-1">
+              {doubt.subject} {doubt.classGrade ? `• Class ${doubt.classGrade}` : ''}
+            </h2>
+            <p className="text-gray-800 font-medium" lang="en" translate="no">
+              {previewEN}
+            </p>
+            <p className="text-sm text-gray-500 mt-2">Chapter: {doubt.chapter}</p>
+            <p className="text-sm text-gray-500">Status: {doubt.status || 'Pending'}</p>
+          </CardContent>
+        </Card>
+      );
+    });
+  }, [doubts, previewEnMap]);
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-[#E8FFF8] via-[#FFF0F6] to-[#FFF9E7] p-8">
-      {/* Top Section with Back Button */}
-      <div className="flex items-center justify-between mb-8">
-        <Button
-          variant="outline"
-          onClick={() => router.push('/teacher')}
-          className="border-purple-300 text-purple-700 hover:bg-purple-50"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
-        <h1 className="text-3xl sm:text-4xl font-bold text-purple-700 text-center flex-1">
-          Doubt Solver 💬
-        </h1>
-        <div className="w-[150px]" /> {/* Spacer to keep heading centered */}
-      </div>
+      <h1 className="text-4xl font-bold text-purple-700 mb-8 text-center">
+        Doubt Solver 💬
+      </h1>
 
       {/* Doubts List */}
       {!selectedDoubt && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {doubts.map((doubt) => {
-            const previewEN = previewEnMap[doubt.id] ?? '(loading preview...)';
-            return (
-              <Card
-                key={doubt.id}
-                className="cursor-pointer bg-white/80 border border-purple-100 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition"
-                onClick={() => setSelectedDoubt(doubt)}
-              >
-                <CardContent className="p-5">
-                  <h2 className="text-lg font-semibold text-purple-700 mb-1">
-                    {doubt.subject}
-                    {doubt.classGrade ? ` • Class ${doubt.classGrade}` : ''}
-                  </h2>
-                  <p className="text-gray-800 font-medium">{previewEN}</p>
-                  <p className="text-sm text-gray-500 mt-2">Chapter: {doubt.chapter}</p>
-                  <p className="text-sm text-gray-500">Status: {doubt.status || 'Pending'}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {doubtCards}
           {doubts.length === 0 && (
             <p className="text-center text-gray-600 col-span-full mt-20">
               No new doubts yet for {teacherSubject}
@@ -299,9 +368,11 @@ export default function DoubtSolverPage() {
           </div>
 
           <h2 className="text-2xl font-bold text-purple-800 mb-2">
-            {selectedDoubt.chapter} ({selectedDoubt.subject}
+            {selectedDoubt.chapter} (
+            {selectedDoubt.subject}
             {selectedDoubt.classGrade ? ` • Class ${selectedDoubt.classGrade}` : ''})
           </h2>
+
           <p className="text-gray-700 mb-4">
             <span className="font-semibold">Student Doubt (EN): </span>
             <span lang="en" translate="no" className="font-medium">
@@ -316,15 +387,14 @@ export default function DoubtSolverPage() {
             )}
             {messages.map((msg) => {
               const isTeacher = msg.senderRole === 'teacher' || msg.senderId === user?.uid;
-              let display = '';
 
+              let display = '';
               if (isTeacher) {
                 display = (msg.text_en || msg.text_original || msg.text || '').trim();
               } else {
-                display = translatedMsgMap[msg.id];
-                if (display === undefined || isTranslating[msg.id]) {
-                  display = '(translating...)';
-                }
+                const candidate = translatedMsgMap[msg.id];
+                display =
+                  candidate === undefined || isTranslating[msg.id] ? '(translating...)' : candidate;
               }
 
               if (!display && !isTranslating[msg.id]) display = '(empty message)';
