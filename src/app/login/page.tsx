@@ -1,43 +1,34 @@
 "use client";
 
-import { T } from '@/components/T';
-import React, { useState, useEffect, Suspense } from "react"; // Import Suspense + useEffect
+import { T } from "@/components/T";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
-// (NEW) If your TranslationContext exposes a setter, we'll use it.
-// We import lazily inside the component to avoid hard dependency if types differ.
-// import { useTranslation } from "@/context/TranslationContext";
-
-/* ---- Inner Client Component to access searchParams ---- */
 function LoginContent() {
   const router = useRouter();
-  const params = useSearchParams(); // Safe to use here now
+  const params = useSearchParams();
   const redirect = params.get("redirect");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
-
-  // (NEW) Language gate state
   const [chosenLang, setChosenLang] = useState<string>("");
 
-  // (NEW) App language list (display label -> code)
   const languageOptions: { label: string; code: string }[] = [
-    { label: "English",  code: "en" },
-    { label: "Hindi",    code: "hi" },
-    { label: "Marathi",  code: "mr" },
-    { label: "Tamil",    code: "ta" },
-    { label: "Punjabi",  code: "pa" },
-    { label: "Bengali",  code: "bn" },
+    { label: "English", code: "en" },
+    { label: "Hindi", code: "hi" },
+    { label: "Marathi", code: "mr" },
+    { label: "Tamil", code: "ta" },
+    { label: "Punjabi", code: "pa" },
+    { label: "Bengali", code: "bn" },
     { label: "Assamese", code: "as" },
   ];
 
-  // (NEW) On mount, if a language was already chosen earlier (e.g., from profile or a prior visit), respect it and show the form.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved =
@@ -46,44 +37,23 @@ function LoginContent() {
       "";
     if (saved) {
       setChosenLang(saved);
-      // fire event so everything translates on first paint
       try {
         window.dispatchEvent(new CustomEvent("languageChange", { detail: saved }));
       } catch {}
     }
   }, []);
 
-  // (NEW) When a language is chosen here, persist it the same way as profile
   const applyLanguageChoice = (langCode: string) => {
     if (typeof window !== "undefined") {
       localStorage.setItem("appLang", langCode);
       localStorage.setItem("selectedLanguage", langCode);
       try {
-        // Let anyone listening (e.g., TranslationProvider / T / other pages) update immediately
         window.dispatchEvent(new CustomEvent("languageChange", { detail: langCode }));
       } catch {}
     }
-
-    // Try to update your TranslationProvider state immediately (best effort).
-    // We do this dynamically to avoid compile/type issues if your context doesn't export these.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require("@/context/TranslationContext");
-      const hook = mod?.useTranslation as unknown as (() => any) | undefined;
-      if (hook) {
-        const ctx = hook();
-        // common setter names across implementations:
-        ctx?.setTargetLanguage?.(langCode);
-        ctx?.setLanguage?.(langCode);
-      }
-    } catch {
-      // Non-blocking if context doesn't expose setters; localStorage + event are enough.
-    }
-
     setChosenLang(langCode);
   };
 
-  // handleLogin function remains the same
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -93,33 +63,31 @@ function LoginContent() {
       const snap = await getDoc(doc(db, "users", uid));
 
       if (!snap.exists()) {
-          // Handle case where user exists in Auth but not Firestore (e.g., incomplete registration)
-          alert("Login failed: User profile not found. Please contact support or try registering again.");
-          await auth.signOut(); // Log them out from Auth as well
-          setLoading(false);
-          return;
+        alert(
+          "Login failed: User profile not found. Please contact support or try registering again."
+        );
+        await auth.signOut();
+        setLoading(false);
+        return;
       }
 
-      // Ensure role type safety
-      const role = (snap.data()?.role as "student" | "teacher" | "parent" | undefined) || "student";
+      const rawRole = snap.data()?.role;
+      const role = String(rawRole ?? "student").trim().toLowerCase();
 
       if (redirect) {
         router.replace(redirect);
         return;
       }
 
-      // Updated role check to be case-insensitive just in case
-      const lowerCaseRole = role.toLowerCase();
-      if (lowerCaseRole === "parent") router.replace("/parent");
-      else if (lowerCaseRole === "teacher") router.replace("/teacher_home");
-      else router.replace("/home"); // Default or student goes to student dashboard
-
+      if (role === "admin") router.replace("/admin");
+      else if (role === "parent") router.replace("/parent");
+      else if (role === "teacher") router.replace("/teacher_home");
+      else router.replace("/home");
     } catch (err: any) {
-      console.error("Login Error:", err.code, err.message); // Log error details
-      // Specific error handling remains the same, added invalid-credential
-      if (err.code === "auth/user-not-found" || err.code === 'auth/invalid-credential') {
+      console.error("Login Error:", err.code, err.message);
+      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
         alert("Email ID not found or password incorrect. Please check or sign up first.");
-      } else if (err.code === "auth/wrong-password") { // Keep for older Firebase versions
+      } else if (err.code === "auth/wrong-password") {
         alert("Password is incorrect. Please enter the correct password.");
       } else if (err.code === "auth/invalid-email") {
         alert("Invalid email address format.");
@@ -131,40 +99,47 @@ function LoginContent() {
     }
   };
 
-  // Return statement with JSX remains the same (ensure T component wraps text)
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-100 via-indigo-100 to-pink-100 p-4"> {/* Added padding */}
-      {/* Soft doodle background shapes */}
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#8ec5fc] via-[#a18cd1] to-[#fbc2eb] p-6 overflow-hidden">
+      {/* Doodles */}
       <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 600 600"
-          className="absolute -top-20 -left-20 w-96 h-96 text-purple-300"
-          fill="currentColor"
-        >
-          <path d="M300,521.05c90.66,0,170.14-61.38,197.38-147.45,27.9-88.74-2.2-193.62-87.61-245.45C330.47,83,255,80.23,190.89,121.73,126.74,163.25,93,238.08,104.21,309.37c11.32,73.21,51.52,141.86,115.15,180.59C255.41,508.9,277.59,521.05,300,521.05Z" />
-        </svg>
-
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 600 600"
-          className="absolute bottom-0 right-0 w-[28rem] h-[28rem] text-indigo-200"
-          fill="currentColor"
-        >
-          <path d="M300,521.05c90.66,0,170.14-61.38,197.38-147.45,27.9-88.74-2.2-193.62-87.61-245.45C330.47,83,255,80.23,190.89,121.73,126.74,163.25,93,238.08,104.21,309.37c11.32,73.21,51.52,141.86,115.15,180.59C255.41,508.9,277.59,521.05,300,521.05Z" />
-        </svg>
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png"
+          className="absolute top-16 left-10 w-28 animate-float"
+          alt="student"
+        />
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/1828/1828817.png"
+          className="absolute bottom-16 right-10 w-24 animate-float-slow"
+          alt="book"
+        />
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png"
+          className="absolute top-1/2 left-[10%] w-20 animate-float"
+          alt="pencil"
+        />
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/3062/3062634.png"
+          className="absolute bottom-10 left-1/4 w-28 animate-float-slow"
+          alt="globe"
+        />
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/2331/2331942.png"
+          className="absolute top-0 right-0 w-32 animate-float-slow"
+          alt="doodle"
+        />
       </div>
 
-      {/* Main login card */}
-      <div className="relative z-10 bg-white/80 backdrop-blur-md p-8 sm:p-10 rounded-2xl shadow-2xl w-full max-w-md transition-transform transform hover:scale-[1.01]"> {/* Adjusted max-width and hover */}
-        <h1 className="whitespace-nowrap text-3xl sm:text-4xl font-bold text-center text-purple-700 mb-2">
+      {/* Card */}
+      <div className="relative z-10 bg-white/90 backdrop-blur-3xl p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md transition-transform transform hover:scale-[1.01]">
+        <h1 className="text-center text-4xl font-extrabold text-purple-700 mb-2">
           <T>Login to Vidya Setu</T>
         </h1>
-        <p className="text-center text-gray-500 mb-8">
+        <p className="text-center text-gray-600 mb-6">
           <T>Welcome back! Please log in to continue your learning journey</T> 🎒
         </p>
 
-        {/* (NEW) Language chooser appears FIRST. The rest of the form is hidden until chosenLang is set */}
+        {/* Language first */}
         <div className="mb-6">
           <label className="block font-semibold text-gray-700 mb-2">
             <T>Choose Language</T>
@@ -172,9 +147,11 @@ function LoginContent() {
           <select
             value={chosenLang}
             onChange={(e) => applyLanguageChoice(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90"
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70"
           >
-            <option value="">{/* empty -> show placeholder */}<T>Select Language</T></option>
+            <option value="">
+              <T>Select Language</T>
+            </option>
             {languageOptions.map((opt) => (
               <option key={opt.code} value={opt.code}>
                 {opt.label}
@@ -186,32 +163,31 @@ function LoginContent() {
           </p>
         </div>
 
-        {/* Render the rest of the login form ONLY when a language has been chosen */}
-        {chosenLang ? (
+        {chosenLang && (
           <form onSubmit={handleLogin} className="space-y-5">
             <input
               type="email"
-              placeholder="Email Address" // Placeholder translation might be inconsistent across browsers
-              autoComplete="email" // Use standard autocomplete
+              placeholder="Email Address"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90" // Slightly more opaque input
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70"
             />
             <input
               type="password"
-              placeholder="Password" // Placeholder translation might be inconsistent across browsers
-              autoComplete="current-password" // Use standard autocomplete
+              placeholder="Password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/90" // Slightly more opaque input
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70"
             />
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-3 rounded-md font-semibold shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" // Added disabled cursor
-              disabled={loading || resetting} // Disable if resetting too
+              disabled={loading || resetting}
+              className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-400 text-white py-3 rounded-md font-semibold shadow-md hover:brightness-110 transition-all duration-300 disabled:opacity-60"
             >
               {loading ? (
                 <span className="flex justify-center items-center gap-2">
@@ -223,11 +199,6 @@ function LoginContent() {
               )}
             </button>
           </form>
-        ) : (
-          // If language not chosen yet, we show a gentle note and hide the form.
-          <div className="mt-6 text-sm text-gray-600">
-            <T>Please select your language to continue.</T>
-          </div>
         )}
 
         <p className="mt-8 text-center text-sm text-gray-700">
@@ -240,13 +211,20 @@ function LoginContent() {
           </a>
         </p>
       </div>
+
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+        }
+        .animate-float { animation: float 5s ease-in-out infinite; }
+        .animate-float-slow { animation: float 7s ease-in-out infinite; }
+      `}</style>
     </div>
   );
 }
 
-/* ---- Main Page Export with Suspense ---- */
 export default function LoginPage() {
-  // We wrap the component that uses useSearchParams in Suspense
   return (
     <Suspense fallback={<LoadingLogin />}>
       <LoginContent />
@@ -254,13 +232,10 @@ export default function LoginPage() {
   );
 }
 
-// Simple loading component for the Suspense fallback
 function LoadingLogin() {
-   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-100 via-indigo-100 to-pink-100">
-         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
-         {/* Optional: Add text */}
-         {/* <p className="ml-4 text-lg font-medium text-purple-700"><T>Loading Login...</T></p> */}
+  return (
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#8ec5fc] via-[#a18cd1] to-[#fbc2eb]">
+      <Loader2 className="h-12 w-12 animate-spin text-purple-500" />
     </div>
   );
 }
