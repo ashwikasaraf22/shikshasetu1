@@ -7,6 +7,25 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'community_share'; // <-- writes here
 
+// helper to remove undefined recursively
+function clean<T extends Record<string, any>>(obj: T): T {
+  const out: Record<string, any> = {};
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v === undefined) return;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const nested = clean(v as any);
+      out[k] = nested;
+    } else if (Array.isArray(v)) {
+      out[k] = v
+        .map((x) => (x && typeof x === 'object' ? clean(x) : x))
+        .filter((x) => x !== undefined);
+    } else {
+      out[k] = v;
+    }
+  });
+  return out as T;
+}
+
 export default function ShareSomething() {
   const router = useRouter();
 
@@ -15,6 +34,68 @@ export default function ShareSomething() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [posted, setPosted] = useState(false);
+
+  // media upload state
+  const [files, setFiles] = useState<FileList | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [assets, setAssets] = useState<any[]>([]); // stores Cloudinary responses
+
+  // upload handler to Cloudinary via your signing route
+  const onUpload = async () => {
+    setError(null);
+    if (!files || files.length === 0) {
+      setError('Please choose one or more files before uploading.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Ask server for signature
+      const sign = await fetch('/api/cloudinary/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Use a dedicated folder for these shares
+        body: JSON.stringify({ folder: 'community/share' }),
+      }).then((r) => r.json());
+
+      if (sign?.error) {
+        throw new Error(sign.error || 'Failed to get Cloudinary signature.');
+      }
+
+      const { cloudName, apiKey, signature, timestamp, folder } = sign;
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+
+      const results: any[] = [];
+      for (const file of Array.from(files)) {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('api_key', apiKey);
+        form.append('timestamp', String(timestamp));
+        form.append('signature', signature);
+        form.append('folder', folder);
+
+        // Upload each file
+        const res = await fetch(uploadUrl, { method: 'POST', body: form });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          throw new Error(`Upload failed (${res.status}): ${txt}`);
+        }
+        const json = await res.json();
+        results.push(json);
+      }
+
+      // Merge with any previously uploaded assets (allow multiple uploads)
+      setAssets((prev) => [...prev, ...results]);
+
+      // Clear file input selection (optional)
+      setFiles(null);
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.message || 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const onPost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,17 +117,48 @@ export default function ShareSomething() {
       return;
     }
 
+    // Build the Firestore payload exactly as requested
+    // (We store per-asset entries, and also top-level metadata)
+    const role = 'student'; // set role here
+    const language = 'English'; // set a default; change if you later add a selector
+
+    // per-asset records with only the allowed fields
+    const media = (assets || []).map((a) =>
+      clean({
+        url: a.secure_url,
+        cloudinaryVersion: a.version,
+        storagePath: a.public_id,
+        // Keeping resource_type/format out since you didn’t request them,
+        // but you can add them if needed:
+        // resource_type: a.resource_type,
+        // format: a.format,
+      })
+    );
+
+    const docPayload = clean({
+      title: t,
+      description: d,
+      language,
+      role,
+      uploadedBy: user.uid,
+      uploaderName: user.displayName || user.email || 'Student',
+      // store one "url" at top-level if you want the first photo handy:
+      url: media[0]?.url || null,
+      // store all assets too:
+      media, // [{ url, cloudinaryVersion, storagePath }, ...]
+      // explicit timestamp field as requested:
+      timestamp: serverTimestamp(),
+      // also keep your usual createdAt if you want:
+      createdAt: serverTimestamp(),
+    });
+
     setPosting(true);
     try {
-      await addDoc(collection(db, COLLECTION_NAME), {
-        title: t,
-        description: d,
-        studentId: user.uid,
-        createdAt: serverTimestamp(),
-      });
+      await addDoc(collection(db, COLLECTION_NAME), docPayload);
 
       setTitle('');
       setDescription('');
+      setAssets([]);
       setPosted(true);
     } catch (err: unknown) {
       console.error(err);
@@ -71,30 +183,6 @@ export default function ShareSomething() {
       <div className="pointer-events-none absolute top-1/3 right-10 h-40 w-40 rounded-full bg-[#DFF5F0] blur-3xl opacity-50" />
       <div className="pointer-events-none absolute bottom-20 left-1/4 h-32 w-32 rounded-full bg-[#E7F0FF] blur-3xl opacity-50" />
 
-      {/* Pencil + stationery doodles */}
-      <svg
-        className="pointer-events-none absolute top-6 left-6 w-28 h-28 opacity-90"
-        viewBox="0 0 160 160"
-        fill="none"
-        aria-hidden="true"
-      >
-        <rect x="28" y="28" width="72" height="12" rx="6" fill="#E1D4FF" />
-        <path d="M100 28 L128 18 L121 46 Z" fill="#FFD3E2" />
-        <rect x="28" y="50" width="94" height="8" rx="4" fill="#DFF0FF" />
-        <rect x="28" y="66" width="64" height="8" rx="4" fill="#E0F4F1" />
-      </svg>
-
-      <svg
-        className="pointer-events-none absolute top-28 right-6 w-24 h-24 opacity-70"
-        viewBox="0 0 120 120"
-        fill="none"
-        aria-hidden="true"
-      >
-        <circle cx="36" cy="36" r="10" fill="#FFE7D1" />
-        <rect x="54" y="26" width="44" height="8" rx="4" fill="#E7F0FF" />
-        <path d="M12 90 q30 -20 70 0" stroke="#B8E2D6" strokeWidth="4" strokeLinecap="round" />
-      </svg>
-
       {/* Header with Back button */}
       <header className="relative z-10">
         <div className="mx-auto max-w-6xl px-6 pt-12 pb-4">
@@ -116,7 +204,6 @@ export default function ShareSomething() {
               </svg>
               Back
             </button>
-            {/* Spacer to keep title centered on wide screens */}
             <div className="w-[84px]" />
           </div>
 
@@ -143,10 +230,6 @@ export default function ShareSomething() {
           onSubmit={onPost}
           className="relative rounded-3xl border border-white/70 bg-white/80 p-8 shadow-2xl backdrop-blur"
         >
-          {/* Soft corner ribbons */}
-          <div className="pointer-events-none absolute -top-6 -left-8 h-24 w-40 -rotate-6 bg-gradient-to-r from-[#EDE9FE] via-[#FFE7D1] to-[#DFF5F0] opacity-40 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-8 -right-8 h-24 w-40 rotate-6 bg-gradient-to-r from-[#FDE7C9] via-[#E9F3FF] to-[#FCE7F3] opacity-40 blur-2xl" />
-
           {/* Title */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-[#4E3FA3] mb-2">Title</label>
@@ -174,6 +257,35 @@ export default function ShareSomething() {
             />
           </div>
 
+          {/* Media upload section */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-[#4E3FA3] mb-2">Attach Media (PNG/JPG/PDF)</label>
+            <input
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,application/pdf"
+              onChange={(e) => setFiles(e.target.files)}
+              className="w-full rounded-xl border border-[#E7E3FF] bg-white/95 px-4 py-2 outline-none"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onUpload}
+                disabled={uploading || !files || files.length === 0}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold shadow transition ${
+                  uploading
+                    ? 'bg-[#EEE9FF] text-[#8A82B8] cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#7EC8E3] via-[#9B87F5] to-[#F9B8C6] text-white hover:brightness-110'
+                }`}
+              >
+                {uploading ? 'Uploading…' : 'Upload Media'}
+              </button>
+
+              {/* 👇 removed the visible list of uploaded items on purpose */}
+              {/* We still keep assets in state so we can save them, but we don't display them */}
+            </div>
+          </div>
+
           {/* Messages */}
           {error && (
             <div className="mb-4 rounded-xl bg-[#FFF1F0] px-4 py-3 text-sm text-[#8A3B3B] border border-[#FFD6D3]">
@@ -197,36 +309,16 @@ export default function ShareSomething() {
             <button
               type="submit"
               disabled={posting}
-              className={`rounded-xl px-5 py-2.5 text-sm font-semibold shadow transition
-                ${
-                  posting
-                    ? 'bg-[#EEE9FF] text-[#8A82B8] cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#9B87F5] via-[#7EC8E3] to-[#F9B8C6] text-white hover:brightness-110'
-                }`}
+              className={`rounded-xl px-5 py-2.5 text-sm font-semibold shadow transition ${
+                posting
+                  ? 'bg-[#EEE9FF] text-[#8A82B8] cursor-not-allowed'
+                  : 'bg-gradient-to-r from-[#9B87F5] via-[#7EC8E3] to-[#F9B8C6] text-white hover:brightness-110'
+              }`}
             >
               {posting ? 'Posting…' : 'Post'}
             </button>
           </div>
         </form>
-
-        {/* Bottom corner doodle cluster */}
-        <div className="relative">
-          <svg
-            className="pointer-events-none absolute -bottom-6 right-8 w-32 h-32 opacity-70"
-            viewBox="0 0 120 120"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M10 80 q30 -20 70 0 q20 10 30 20"
-              stroke="#B8E2D6"
-              strokeWidth="4"
-              strokeLinecap="round"
-            />
-            <rect x="70" y="18" width="32" height="10" rx="5" fill="#FFD3E2" />
-            <circle cx="28" cy="26" r="8" fill="#E1D4FF" />
-          </svg>
-        </div>
       </main>
     </div>
   );

@@ -1,3 +1,4 @@
+// src/app/student/community/feed/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -10,24 +11,41 @@ import {
   query,
   Timestamp,
 } from 'firebase/firestore';
+import { useAuth } from '@/components/auth/AuthProvider';
+
+/* =========================
+   Types
+========================= */
+type MediaItem = {
+  url: string;           // original Cloudinary secure_url
+  previewUrl: string;    // image preview (for PDFs: first page as jpg)
+  isPdf: boolean;
+  downloadUrl: string;   // fl_attachment link for downloads
+};
 
 type CommunityPost = {
   id: string;
   title: string;
   description: string;
-  createdAt: string; // ISO string for UI formatting
+  createdAt: string;     // ISO for UI formatting
+  media: MediaItem[];    // multiple attachments
 };
 
 type Comment = {
   id: string;
   postId: string;
   text: string;
-  createdAt: string; // ISO
+  createdAt: string;     // ISO
 };
 
-const POSTS_KEY = 'communityPosts';       // kept (unused for Firestore posts; UI unchanged)
-const COMMENTS_KEY = 'communityComments'; // still used for comments
+/* =========================
+   Local storage key (comments)
+========================= */
+const COMMENTS_KEY = 'communityComments';
 
+/* =========================
+   Helpers
+========================= */
 function uid() {
   return (
     'id-' +
@@ -53,14 +71,137 @@ function formatDate(iso?: string) {
   }
 }
 
+function inferIsPdf(url?: string | null) {
+  if (!url) return false;
+  return /\.pdf(\?|$)/i.test(url);
+}
+
+/** Insert fl_attachment so clicking "Download" forces a download */
+function buildDownloadUrl(rawUrl: string): string {
+  try {
+    const i = rawUrl.indexOf('/upload/');
+    if (i !== -1) {
+      return rawUrl.replace('/upload/', '/upload/fl_attachment/');
+    }
+    const u = new URL(rawUrl);
+    u.searchParams.set('download', '1');
+    return u.toString();
+  } catch {
+    return rawUrl + (rawUrl.includes('?') ? '&' : '?') + 'download=1';
+  }
+}
+
+/**
+ * Build a reliable IMAGE preview URL for a Cloudinary PDF (first page).
+ * We transform the original URL to an image delivery with pg_1 (first page).
+ * Works for standard Cloudinary URLs: https://res.cloudinary.com/<cloud>/<type>/upload/...
+ */
+function buildPdfPreviewUrlFromUrl(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    if (!/res\.cloudinary\.com$/i.test(url.host)) return rawUrl;
+
+    const parts = url.pathname.split('/'); // ["", "<cloud>", "image", "upload", ...]
+    const uploadIdx = parts.findIndex((p) => p === 'upload');
+    if (uploadIdx === -1) return rawUrl;
+
+    const last = parts[parts.length - 1]; // e.g. "doc.pdf"
+    const dot = last.lastIndexOf('.');
+    const filenameNoExt = dot > 0 ? last.slice(0, dot) : last;
+
+    // Replace filename to .jpg so it's delivered as image
+    parts[parts.length - 1] = filenameNoExt + '.jpg';
+
+    // Insert transforms right after 'upload'
+    parts.splice(uploadIdx + 1, 0, 'pg_1,f_auto,q_auto');
+
+    // Force resource_type to 'image' (index 2 typically)
+    if (parts.length > 2) {
+      parts[2] = 'image';
+    }
+
+    const previewPath = parts.join('/');
+    return `${url.protocol}//${url.host}${previewPath}${url.search}`;
+  } catch {
+    return rawUrl;
+  }
+}
+
+/** For images, the preview is just the image itself */
+function buildImagePreviewUrl(rawUrl: string): string {
+  return rawUrl;
+}
+
+/* =========================
+   Small attachment card (with Open & Download)
+========================= */
+function AttachmentCard({
+  media,
+  title,
+}: {
+  media: { url: string; previewUrl: string; isPdf: boolean; downloadUrl: string };
+  title?: string;
+}) {
+  const [failed, setFailed] = React.useState(false);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[#E6DEFF] bg-white/70">
+      {/* overlay actions */}
+      <div className="absolute right-2 top-2 z-10 flex gap-2">
+        {/* Download */}
+        <a
+          href={media.downloadUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-lg bg-white/90 px-3 py-1 text-xs font-semibold text-[#4C409F] shadow hover:bg-white"
+          title="Download"
+        >
+          Download
+        </a>
+      </div>
+
+      {!failed ? (
+        <img
+          src={media.previewUrl}
+          alt={title || (media.isPdf ? 'PDF preview' : 'image')}
+          className="w-full h-64 object-cover"
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="flex h-64 w-full items-center justify-center bg-gradient-to-br from-[#F6F3FF] to-[#FDF7FA] text-sm text-[#4C409F]">
+          {media.isPdf ? 'PDF preview not available' : 'Image preview not available'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================
+   Page
+========================= */
 export default function CommunityExploreFeed() {
   const router = useRouter();
+  const { user, loading } = useAuth(); // protect page to avoid app-level 401s
+  const [authChecking, setAuthChecking] = useState(true);
+
   const [posts, setPosts] = useState<CommunityPost[] | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
-  // Load comments (localStorage) — unchanged
+  // Client-side auth guard (redirect instead of 401)
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.replace('/login?redirect=' + encodeURIComponent('/student/community/feed'));
+      } else {
+        setAuthChecking(false);
+      }
+    }
+  }, [loading, user, router]);
+
+  // Load comments (localStorage)
   useEffect(() => {
     try {
       const rawComments = localStorage.getItem(COMMENTS_KEY) || '[]';
@@ -74,17 +215,16 @@ export default function CommunityExploreFeed() {
 
   // Fetch posts from Firestore: community_share (live updates)
   useEffect(() => {
+    if (!user) return; // wait for auth
     try {
-      const q = query(
-        collection(db, 'community_share'),
-        orderBy('createdAt', 'desc')
-      );
+      const q = query(collection(db, 'community_share'), orderBy('createdAt', 'desc'));
 
       const unsub = onSnapshot(
         q,
         (snap) => {
           const list: CommunityPost[] = snap.docs.map((doc) => {
             const data = doc.data() as any;
+
             // createdAt can be Timestamp | string | undefined
             let createdISO = '';
             if (data?.createdAt instanceof Timestamp) {
@@ -92,8 +232,33 @@ export default function CommunityExploreFeed() {
             } else if (typeof data?.createdAt === 'string') {
               createdISO = data.createdAt;
             } else {
-              // fallback: let UI handle gracefully
               createdISO = '';
+            }
+
+            // Collect media array from either `media[]` or legacy `url`
+            const mediaArray: MediaItem[] = [];
+
+            if (Array.isArray(data?.media) && data.media.length > 0) {
+              for (const m of data.media) {
+                if (!m?.url) continue;
+                const url = String(m.url);
+                const isPdf = inferIsPdf(url);
+                mediaArray.push({
+                  url,
+                  isPdf,
+                  downloadUrl: buildDownloadUrl(url),
+                  previewUrl: isPdf ? buildPdfPreviewUrlFromUrl(url) : buildImagePreviewUrl(url),
+                });
+              }
+            } else if (typeof data?.url === 'string' && data.url) {
+              const url = data.url;
+              const isPdf = inferIsPdf(url);
+              mediaArray.push({
+                url,
+                isPdf,
+                downloadUrl: buildDownloadUrl(url),
+                previewUrl: isPdf ? buildPdfPreviewUrlFromUrl(url) : buildImagePreviewUrl(url),
+              });
             }
 
             return {
@@ -101,11 +266,11 @@ export default function CommunityExploreFeed() {
               title: data?.title ?? '',
               description: data?.description ?? '',
               createdAt: createdISO,
+              media: mediaArray,
             };
           });
 
           setPosts(list);
-          // We no longer write posts to localStorage (data source is Firestore).
         },
         (err) => {
           console.error('Firestore feed error:', err);
@@ -120,7 +285,7 @@ export default function CommunityExploreFeed() {
       setError('Could not load posts.');
       setPosts([]);
     }
-  }, []);
+  }, [user]);
 
   const commentsByPost = useMemo(() => {
     const map: Record<string, Comment[]> = {};
@@ -159,30 +324,26 @@ export default function CommunityExploreFeed() {
     const ok = window.confirm('Delete this post? This will also remove its comments (locally).');
     if (!ok) return;
 
-    // Remove post from in-memory list only (since Firestore posts are owned by creators/admins)
     const updatedPosts = posts.filter((p) => p.id !== postId);
     setPosts(updatedPosts);
 
-    // Remove associated comments (local)
     const updatedComments = comments.filter((c) => c.postId !== postId);
     setComments(updatedComments);
     localStorage.setItem(COMMENTS_KEY, JSON.stringify(updatedComments));
 
-    // Clear any draft (local)
     setDrafts((d) => {
       const copy = { ...d };
       delete copy[postId];
       return copy;
     });
-
-    // Note: we intentionally do not write POSTS_KEY anymore.
   };
+
+  if (loading || authChecking) return null;
 
   return (
     <div className="relative min-h-screen overflow-hidden text-gray-800">
-      {/* Deeper pastel background */}
+      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#E9E4FF] via-[#FFEAF2] to-[#E2F7F1]" />
-      {/* Stronger blurred blobs */}
       <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-[#DAD2FF] blur-3xl opacity-70 animate-pulse" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-[28rem] w-[28rem] rounded-full bg-[#FFDCC7] blur-3xl opacity-70 animate-pulse delay-700" />
       <div className="pointer-events-none absolute top-1/3 left-10 h-36 w-36 rounded-full bg-[#CFF3E8] blur-3xl opacity-60" />
@@ -190,14 +351,19 @@ export default function CommunityExploreFeed() {
       {/* Header */}
       <header className="relative z-10 mx-auto max-w-6xl px-6 pt-12 pb-4">
         <div className="flex items-center justify-between">
-          {/* Back button */}
           <button
             onClick={() => router.push('/student/community')}
             className="inline-flex items-center gap-2 rounded-xl border border-[#D5CEFF] bg-white/80 px-4 py-2 text-sm font-semibold text-[#4C409F] shadow hover:shadow-md backdrop-blur hover:bg-white"
           >
-            {/* back chevron */}
             <svg width="16" height="16" viewBox="0 0 24 24" className="-ml-0.5">
-              <path d="M15 18l-6-6 6-6" fill="none" stroke="#6F5AE8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M15 18l-6-6 6-6"
+                fill="none"
+                stroke="#6F5AE8"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             Back
           </button>
@@ -207,7 +373,6 @@ export default function CommunityExploreFeed() {
             Explore & Join the conversation
           </span>
 
-          {/* Spacer to balance flex */}
           <div className="w-[84px]" />
         </div>
 
@@ -252,6 +417,15 @@ export default function CommunityExploreFeed() {
                   <path d="M10 50 Q 25 30, 40 50 T 70 50" stroke="#C0B0FF" strokeWidth="3" />
                 </svg>
 
+                {/* MEDIA GRID — multiple images/pdfs (PDFs show preview image) */}
+                {p.media.length > 0 && (
+                  <div className="mb-4 grid grid-cols-1 gap-3">
+                    {p.media.map((m, idx) => (
+                      <AttachmentCard key={idx} media={m} title={p.title} />
+                    ))}
+                  </div>
+                )}
+
                 {/* Post header */}
                 <div className="mb-4">
                   <div className="flex items-start justify-between gap-3">
@@ -263,7 +437,6 @@ export default function CommunityExploreFeed() {
                       className="inline-flex items-center gap-1 rounded-lg border border-[#FFD6DE] bg-[#FFF1F4] px-2.5 py-1.5 text-xs font-semibold text-[#7C2A3A] hover:bg-white hover:shadow"
                       title="Delete post"
                     >
-                      {/* trash icon */}
                       <svg width="14" height="14" viewBox="0 0 24 24">
                         <path d="M3 6h18" stroke="#C43D59" strokeWidth="2" strokeLinecap="round" />
                         <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#C43D59" strokeWidth="2" strokeLinecap="round" />
@@ -284,7 +457,7 @@ export default function CommunityExploreFeed() {
                 {/* Divider */}
                 <div className="my-4 h-px w-full bg-gradient-to-r from-transparent via-[#DAD2FF] to-transparent" />
 
-                {/* Comments list */}
+                {/* Comments */}
                 <div className="space-y-3 max-h-44 overflow-auto pr-1">
                   {(commentsByPost[p.id] || []).map((c) => (
                     <div
@@ -309,7 +482,6 @@ export default function CommunityExploreFeed() {
                 {/* Comment composer */}
                 <div className="mt-4 rounded-2xl bg-gradient-to-r from-[#EFE9FF] via-[#FFE5ED] to-[#DFF6F0] p-3 border border-white/60">
                   <div className="flex items-start gap-3">
-                    {/* Pencil doodle */}
                     <svg
                       className="mt-1 h-6 w-6 flex-shrink-0 opacity-90"
                       viewBox="0 0 64 64"
@@ -346,7 +518,6 @@ export default function CommunityExploreFeed() {
                   </div>
                 </div>
 
-                {/* Bottom ribbon */}
                 <div className="pointer-events-none absolute -bottom-6 -left-10 h-24 w-56 rotate-6 bg-gradient-to-r from-[#DDD4FF] via-[#FFDCC7] to-[#CFF3E8] opacity-50 blur-2xl" />
               </article>
             ))}

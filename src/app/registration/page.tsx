@@ -1,6 +1,6 @@
 'use client';
 
-import { T } from '@/components/T'; // Added Import
+import { T } from '@/components/T';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
@@ -10,12 +10,12 @@ import {
   sendEmailVerification,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { User, Mail, Lock, Phone, UserCircle } from 'lucide-react';
 
 type Role = 'student' | 'teacher' | 'parent' | '';
 
 export default function VidyaSetuRegistration() {
   const router = useRouter();
-
   const [formData, setFormData] = useState({
     role: '' as Role,
     name: '',
@@ -42,313 +42,252 @@ export default function VidyaSetuRegistration() {
     setFormData(prev => ({ ...prev, className: value ? [value] : [] }));
   };
 
-  const toggleTeacherClass = (cls: string, checked: boolean) => {
-    setFormData(prev => {
-      const set = new Set(prev.className);
-      if (checked) set.add(cls);
-      else set.delete(cls);
-      return { ...prev, className: Array.from(set) };
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-
-    // Validation checks remain the same
     if (!formData.role) return alert('Please select a role.');
-    if (formData.role === 'teacher' && formData.className.length === 0) {
-      return alert('Teachers must choose at least one class.');
-    }
-    if (formData.role === 'teacher' && !formData.subject) {
-      return alert('Please select a subject.');
-    }
-    if (formData.role !== 'teacher' && !formData.className[0]) {
-      return alert('Please select a class.');
-    }
-    if (formData.role === 'parent' && (!formData.childName || !formData.childEmail)) {
-      return alert("Please provide your child's name and email.");
-    }
-    if ((formData.role === 'teacher' || formData.role === 'parent') && !formData.phone) {
-      return alert('Please provide a phone number.');
-    }
 
     try {
       setLoading(true);
-
       const cred = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
       );
-
       if (formData.name) {
         await updateProfile(cred.user, { displayName: formData.name });
       }
 
       const userRef = doc(db, 'users', cred.user.uid);
-      const base = {
-        role: formData.role,
-        email: formData.email,
-        language: formData.language,
+      await setDoc(userRef, {
+        ...formData,
         createdAt: serverTimestamp(),
-      };
+      });
 
-      if (formData.role === 'teacher') {
-        await setDoc(userRef, {
-          ...base,
-          fullName: formData.name || 'Unknown teacher',
-          className: formData.className,
-          subject: formData.subject,
-          phoneNumber: formData.phone,
-        });
-      } else if (formData.role === 'student') {
-        await setDoc(userRef, {
-          ...base,
-          fullName: formData.name || 'Unknown',
-          className: formData.className[0] || '-',
-          subject: '',
-        });
-      } else if (formData.role === 'parent') {
-        await setDoc(userRef, {
-          ...base,
-          fullName: formData.name || 'Unknown',
-          className: formData.className[0] || '-',
-          childName: formData.childName,
-          childEmail: formData.childEmail,
-          subject: '',
-          phoneNumber: formData.phone,
-        });
-      }
-
-      try {
-        await sendEmailVerification(cred.user);
-      } catch { /* non-blocking */ }
-
-      localStorage.setItem('user', JSON.stringify(formData));
-
-      alert('✅ Registered successfully! Please verify your email if requested.');
+      await sendEmailVerification(cred.user).catch(() => {});
+      alert('✅ Registered successfully! Check your email for verification.');
       router.push('/login');
     } catch (err: any) {
-      console.error(err);
-      const msg =
-        err?.code === 'auth/email-already-in-use'
-          ? 'Email already in use'
-          : err?.code === 'auth/weak-password'
-          ? 'Weak password (min 6 characters)'
-          : err?.message || 'Registration failed';
-      alert(`❌ ${msg}`);
+      alert(`❌ ${err.message || 'Registration failed'}`);
     } finally {
       setLoading(false);
     }
   };
 
   const classOptions = ['7th', '8th', '9th'];
-  const languageOptions = [
-    'English',
-    'Hindi',
-    'Marathi',
-    'Tamil',
-    'Punjabi',
-    'Bengali',
-    'Assamese',
-  ];
+  const languageOptions = ['English', 'Hindi', 'Marathi', 'Tamil', 'Punjabi'];
   const subjectOptions = ['Science', 'Maths', 'SSC'];
 
+  const InputField = ({ icon: Icon, ...props }: any) => (
+    <div className="relative">
+      <Icon className="absolute left-3 top-3 text-[#ff7e5f]" size={18} />
+      <input
+        {...props}
+        className={`w-full border border-gray-300 rounded-lg p-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-[#feb47b] bg-white/70 placeholder-gray-400 ${props.className || ''}`}
+      />
+    </div>
+  );
+
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#EBDDFB] via-[#F3E8FF] to-[#D8D0FF] p-6">
-      {/* Decorative blobs */}
-      <div className="absolute inset-0 overflow-hidden opacity-40 pointer-events-none">
-        <div className="absolute -top-10 -left-10 w-72 h-72 bg-purple-300 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-300 rounded-full blur-3xl animate-pulse delay-700"></div>
-        <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-pink-200 rounded-full blur-3xl opacity-40 animate-pulse delay-1000"></div>
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#ffecd2] via-[#fcb69f] to-[#a1c4fd] p-6 overflow-hidden">
+
+      {/* Background decorative images */}
+      <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png"
+          className="absolute top-16 left-10 w-28 animate-float"
+          alt="student"
+        />
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/1828/1828817.png"
+          className="absolute bottom-16 right-10 w-24 animate-float-slow"
+          alt="book"
+        />
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png"
+          className="absolute top-1/2 left-[10%] w-20 animate-float"
+          alt="pencil"
+        />
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/3062/3062634.png"
+          className="absolute bottom-10 left-1/4 w-28 animate-float-slow"
+          alt="globe"
+        />
       </div>
 
-      <div className="relative z-10 bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl w-full max-w-md p-8 border border-white/40 transition-transform transform hover:scale-[1.02] duration-300 ease-in-out">
-        <h1 className="text-4xl font-extrabold text-center text-purple-700 mb-3">
-          Vidya Setu {/* Brand Name */}
-        </h1>
-        <p className="text-center text-gray-500 mb-6">
-          <T>Join the bridge to better learning</T> 🌱
-        </p>
+      {/* Floating blob effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
+        <div className="absolute -top-20 -left-20 w-96 h-96 bg-pink-300 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-[30rem] h-[30rem] bg-blue-300 rounded-full blur-3xl animate-pulse delay-700"></div>
+      </div>
+
+      {/* Main Card */}
+      <div className="relative z-10 bg-white/80 backdrop-blur-2xl shadow-2xl rounded-3xl w-full max-w-md p-8 border border-white/40 transition-all hover:scale-[1.02] hover:shadow-orange-300/50 duration-300">
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-[#ff7e5f] to-[#feb47b] text-transparent bg-clip-text">
+            Vidya Setu
+          </h1>
+          <p className="text-gray-600 mt-2 text-sm">
+            <T>Join the bridge to better learning 🌈</T>
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Role */}
           <div>
-            <label className="block font-semibold text-gray-700 mb-1"><T>Role</T></label>
+            <label className="block font-semibold text-gray-700 mb-1">
+              <T>Select Role</T>
+            </label>
             <select
               name="role"
               value={formData.role}
-              onChange={e => {
-                const val = (e.target.value as Role) || '';
-                setFormData(prev => ({
-                  ...prev,
-                  role: val, subject: '', className: [], childName: '', childEmail: '', phone: '',
-                }));
-              }}
+              onChange={handleChange}
               required
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70"
+              className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] bg-white/70"
             >
-              <option value=""><T>Select Role</T></option>
-              <option value="student"><T>Student</T></option>
-              <option value="teacher"><T>Teacher</T></option>
-              <option value="parent"><T>Parent</T></option>
+              <option value="">Choose Role</option>
+              <option value="student">🎓 Student</option>
+              <option value="teacher">👩‍🏫 Teacher</option>
+              <option value="parent">👨‍👩‍👧 Parent</option>
             </select>
           </div>
 
-          {/* Name */}
           {formData.role && (
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">
-                {formData.role === 'parent' ? <T>Parent's Name</T> : <T>Full Name</T>}
-              </label>
-              <input
-                type="text" name="name" value={formData.name} onChange={handleChange} required
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70 placeholder-gray-400"
-                placeholder={formData.role === 'parent' ? "Enter parent's full name" : 'Enter your full name'}
+            <>
+              <InputField
+                icon={UserCircle}
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Full Name"
+                required
               />
-            </div>
+              <InputField
+                icon={Mail}
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Email Address"
+                required
+              />
+              <InputField
+                icon={Lock}
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Password (min 6 chars)"
+                required
+              />
+            </>
           )}
 
-          {/* Student Specific */}
           {formData.role === 'student' && (
             <>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Class</T></label>
-                <select name="classNameSingle" value={formData.className[0] || ''} onChange={e => handleSingleClassSelect(e.target.value)} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Select Class</T></option>
-                  {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Email ID</T></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter your email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
-                <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Choose Language</T></option>
-                  {languageOptions.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
+              <select
+                name="classNameSingle"
+                value={formData.className[0] || ''}
+                onChange={e => handleSingleClassSelect(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] bg-white/70"
+              >
+                <option value="">Select Class</option>
+                {classOptions.map(c => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </>
           )}
 
-          {/* Teacher Specific */}
           {formData.role === 'teacher' && (
             <>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-2"><T>Classes</T></label>
-                <div className="flex flex-wrap gap-4">
-                  {classOptions.map(cls => (
-                    <label key={cls} className="flex items-center gap-2">
-                      <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={formData.className.includes(cls)} onChange={e => toggleTeacherClass(cls, e.target.checked)} />
-                      <span>{cls}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Subject</T></label>
-                <select name="subject" value={formData.subject} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Select Subject</T></option>
-                  {subjectOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Phone Number</T></label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required inputMode="tel" minLength={7} maxLength={15} className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="e.g., 9876543210" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Email ID</T></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter your email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
-              </div>
-
-              {/* HIDDEN per request: teacher language dropdown (kept in code, just commented out) */}
-              {/*
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
-                <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Choose Language</T></option>
-                  {languageOptions.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-              */}
+              <select
+                name="subject"
+                value={formData.subject}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] bg-white/70"
+              >
+                <option value="">Select Subject</option>
+                {subjectOptions.map(s => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <InputField
+                icon={Phone}
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="Phone Number"
+                required
+              />
             </>
           )}
 
-          {/* Parent Specific */}
           {formData.role === 'parent' && (
             <>
-              {/* Parent details FIRST */}
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Phone Number</T></label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required inputMode="tel" minLength={7} maxLength={15} className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="e.g., 9876543210" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Parent's Email</T></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter parent's email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Password</T></label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} autoComplete="new-password" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Create a password" />
-              </div>
-
-              {/* Then child details */}
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Child's Name</T></label>
-                <input type="text" name="childName" value={formData.childName} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter child's full name" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Child's Email</T></label>
-                <input type="email" name="childEmail" value={formData.childEmail} onChange={handleChange} required autoComplete="off" className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70" placeholder="Enter child's email" />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Child's Class</T></label>
-                <select name="classNameSingle" value={formData.className[0] || ''} onChange={e => handleSingleClassSelect(e.target.value)} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Select Class</T></option>
-                  {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
-              {/* Parent language stays visible unless you want it hidden too */}
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1"><T>Language</T></label>
-                <select name="language" value={formData.language} onChange={handleChange} required className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white/70">
-                  <option value=""><T>Choose Language</T></option>
-                  {languageOptions.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
+              <InputField
+                icon={User}
+                type="text"
+                name="childName"
+                value={formData.childName}
+                onChange={handleChange}
+                placeholder="Child's Name"
+                required
+              />
+              <InputField
+                icon={Mail}
+                type="email"
+                name="childEmail"
+                value={formData.childEmail}
+                onChange={handleChange}
+                placeholder="Child's Email"
+                required
+              />
             </>
           )}
 
-          {/* Submit */}
           {formData.role && (
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold rounded-lg py-3 mt-4 shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-300 disabled:opacity-60"
+              className="w-full bg-gradient-to-r from-[#ff7e5f] to-[#feb47b] text-white font-semibold rounded-lg py-3 mt-4 shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-300 disabled:opacity-60"
             >
-              {loading ? <T>Registering...</T> : <T>Register</T>}
+              {loading ? <T>Registering...</T> : <T>✨ Register Now ✨</T>}
             </button>
           )}
         </form>
 
         <p className="text-center text-gray-600 text-sm mt-6">
           <T>Already have an account?</T>{' '}
-          <a href="/login" className="text-purple-700 font-semibold hover:underline">
+          <a href="/login" className="text-[#ff7e5f] font-semibold hover:underline">
             <T>Login</T>
           </a>
         </p>
       </div>
+
+      {/* Floating animation */}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-15px);
+          }
+        }
+        .animate-float {
+          animation: float 5s ease-in-out infinite;
+        }
+        .animate-float-slow {
+          animation: float 7s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }

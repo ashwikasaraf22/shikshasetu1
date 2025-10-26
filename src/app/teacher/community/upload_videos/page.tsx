@@ -97,19 +97,27 @@ export default function UploadVideosPage() {
       const folder = `videos/${user.uid}`;
       const public_id = `${new Date().toISOString().replace(/[:.]/g, "-")}_${toPublicId(file.name)}`;
 
+      // --- get signature (parse JSON ONCE) ---
       const signRes = await fetch("/api/cloudinary/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folder, public_id }),
       });
 
-      if (!signRes.ok) {
-        const err = await signRes.json().catch(() => ({}));
-        throw new Error(err?.error || "Failed to sign Cloudinary upload.");
+      const signJson = await signRes.json().catch(() => null as any);
+      if (!signRes.ok || !signJson) {
+        const msg = signJson?.error || "Failed to sign Cloudinary upload.";
+        throw new Error(msg);
       }
 
-      const { cloudName, apiKey, timestamp, signature } = await signRes.json();
+      const { cloudName, apiKey, timestamp, signature } = signJson as {
+        cloudName: string;
+        apiKey: string;
+        timestamp: number;
+        signature: string;
+      };
 
+      // video endpoint (explicit)
       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`;
 
       const form = new FormData();
@@ -120,6 +128,7 @@ export default function UploadVideosPage() {
       form.append("folder", folder);
       form.append("public_id", public_id);
 
+      // --- upload with progress via XHR ---
       const xhr = new XMLHttpRequest();
       const uploadPromise = new Promise<any>((resolve, reject) => {
         xhr.upload.onprogress = (event) => {
@@ -133,9 +142,11 @@ export default function UploadVideosPage() {
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(JSON.parse(xhr.responseText));
             } else {
-              const msg =
-                (JSON.parse(xhr.responseText)?.error?.message as string) ||
-                `Upload failed with status ${xhr.status}`;
+              let msg = `Upload failed with status ${xhr.status}`;
+              try {
+                const parsed = JSON.parse(xhr.responseText);
+                if (parsed?.error?.message) msg = parsed.error.message;
+              } catch {}
               reject(new Error(msg));
             }
           } catch (err) {
@@ -152,6 +163,15 @@ export default function UploadVideosPage() {
       const videoURL: string = cloudinaryResp.secure_url;
       const cloudinaryPublicId: string = cloudinaryResp.public_id;
       const cloudinaryVersion: number = cloudinaryResp.version;
+      const format: string | undefined = cloudinaryResp.format; // e.g., mp4
+      const duration: number | undefined = cloudinaryResp.duration;
+      const width: number | undefined = cloudinaryResp.width;
+      const height: number | undefined = cloudinaryResp.height;
+      const bytes: number | undefined = cloudinaryResp.bytes;
+
+      // Simple first-frame thumbnail URL (poster)
+      // You can adjust the transformation if you want a different frame.
+      const thumbnailUrl = videoURL?.replace("/upload/", "/upload/so_0/");
 
       const payload = {
         title: title.trim(),
@@ -164,6 +184,14 @@ export default function UploadVideosPage() {
         role: "teacher",
         cloudinaryVersion,
         createdAt: serverTimestamp(),
+
+        // extra metadata (useful for listings / previews)
+        format: format ?? null,
+        duration: duration ?? null,
+        width: width ?? null,
+        height: height ?? null,
+        bytes: bytes ?? null,
+        thumbnailUrl: thumbnailUrl ?? null,
       };
 
       await addDoc(collection(db, "videos"), payload);
@@ -289,7 +317,7 @@ export default function UploadVideosPage() {
               {isUploading ? "Uploading…" : "Upload"}
             </button>
 
-            {/* ✅ Updated Back Button */}
+            {/* Back Button */}
             <button
               type="button"
               onClick={() => router.push("/teacher/community")}
