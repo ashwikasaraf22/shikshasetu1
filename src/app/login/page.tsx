@@ -111,7 +111,7 @@ function LoginContent() {
       // Updated role check to be case-insensitive just in case
       const lowerCaseRole = role.toLowerCase();
       if (lowerCaseRole === "parent") router.replace("/parent");
-      else if (lowerCaseRole === "teacher") router.replace("/teacher");
+      else if (lowerCaseRole === "teacher") router.replace("/teacher_home");
       else router.replace("/home"); // Default or student goes to student dashboard
 
     } catch (err: any) {

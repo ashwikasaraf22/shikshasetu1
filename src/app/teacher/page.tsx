@@ -1,22 +1,38 @@
-// src/app/teacher/page.tsx
 'use client';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { MessageCircle, Users, LogOut } from 'lucide-react';
-import { auth } from '@/lib/firebase';
+import { ArrowLeft, MessageCircle, Users } from 'lucide-react';
+
+type Activity = {
+  type: 'doubt' | 'community';
+  title: string;
+  status?: string;
+  time: string;
+};
 
 export default function TeacherDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [recentActivity, setRecentActivity] = useState<Activity[] | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
+      return;
     }
+
+    const t = setTimeout(() => {
+      setRecentActivity([
+        { type: 'doubt', title: 'Solved doubt in Physics: Motion', status: 'Resolved', time: '1 day ago' },
+        { type: 'community', title: 'Shared post in Teaching Innovations', time: '3 days ago' },
+      ]);
+    }, 700);
+
+    return () => clearTimeout(t);
   }, [user, loading, router]);
 
   if (loading || !user) {
@@ -24,98 +40,66 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <div
-      className="
-        min-h-screen w-full text-gray-800 
-        bg-gradient-to-br from-[#ffe0e9] via-[#f4f7ff] to-[#d4f9e7]
-        flex flex-col items-center justify-center
-      "
-    >
-      {/* Logout Button - fixed top right */}
-      <div className="absolute top-4 right-4 z-20">
+    <div className="relative min-h-screen w-full bg-gradient-to-br from-[#FFF1F8] via-[#E8FFF8] to-[#FFF9E7] text-gray-800 overflow-hidden">
+      {/* Background Doodles - corners/edges only */}
+      <div className="absolute top-5 left-5 w-16 h-16 bg-yellow-200 rounded-full opacity-40" />
+      <div className="absolute top-10 right-10 w-12 h-12 bg-pink-200 rounded-full opacity-40" />
+      <div className="absolute bottom-10 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-30" />
+      <div className="absolute bottom-10 right-10 w-24 h-24 bg-cyan-200 rounded-full opacity-25" />
+      <div className="absolute top-1/2 left-5 w-12 h-12 bg-green-200 rounded-full opacity-30" />
+
+      {/* ✅ Back Button - top-left corner */}
+      <div className="absolute top-6 left-6 z-20">
         <Button
-          onClick={async () => {
-            try {
-              await auth.signOut();
-            } finally {
-              router.push('/login');
-            }
-          }}
-          className="bg-rose-500 hover:bg-rose-600 text-white shadow-md"
+          variant="outline"
+          size="sm"
+          onClick={() => router.push('/teacher_home')}
+          className="flex items-center gap-2 text-gray-700 border-gray-300 hover:bg-purple-100 transition-all"
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Log out
+          <ArrowLeft className="w-4 h-4" />
+          Back
         </Button>
       </div>
 
-      {/* Centered Welcome Section */}
-      <div className="text-center mb-10 px-4">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 via-pink-500 to-indigo-500 drop-shadow-md leading-tight">
-          Welcome, {user.name || user.displayName || 'Teacher'} 👋
-        </h1>
-        <p className="mt-4 text-lg sm:text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed">
-          Empower your students, solve their doubts, and collaborate with fellow educators in a
-          serene and pastel-perfect workspace.
-        </p>
-      </div>
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+        {/* Hero / Welcome Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-purple-700 drop-shadow-lg mb-4">
+            Welcome, {user.name || user.displayName || 'Teacher'} 👋
+          </h1>
+          <p className="text-lg text-gray-700 max-w-2xl mx-auto">
+            Engage with your students, solve doubts, and connect with the teaching community in one place!
+          </p>
+        </div>
 
-      {/* Feature Cards */}
-      <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 px-6 pb-16">
-        {/* Doubt Solver Card */}
-        <Link href="/teacher/doubt_solver" className="group">
-          <div
-            className="
-              relative p-8 rounded-3xl bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 
-              border border-blue-200/60 shadow-md hover:shadow-xl 
-              hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm
-            "
-          >
-            <MessageCircle className="h-14 w-14 text-blue-700 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2 text-blue-800 leading-snug">
-              Doubt Solver
-            </h2>
-            <p className="text-blue-900/80 mb-6 text-sm sm:text-base">
-              Quickly answer and manage student queries with ease.
-            </p>
-            <Button className="bg-gradient-to-r from-sky-300 to-blue-300 text-blue-900 hover:from-sky-400 hover:to-blue-400 shadow">
-              Open Doubt Solver
-            </Button>
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          {/* Doubt Solver Card */}
+          <Link href="/teacher/doubt_solver">
+            <div className="relative p-8 rounded-3xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-transform cursor-pointer overflow-hidden bg-gradient-to-br from-blue-200 via-blue-100 to-blue-50 border border-blue-300/40 backdrop-blur-sm">
+              <MessageCircle className="absolute -top-10 -right-10 h-40 w-40 text-blue-300 opacity-30 rotate-12" />
+              <MessageCircle className="h-14 w-14 text-blue-700 mb-4" />
+              <h2 className="text-2xl font-semibold mb-2 text-blue-800">Doubt Solver</h2>
+              <p className="text-blue-900 mb-4">Quickly answer and manage student queries.</p>
+              <Button className="bg-gradient-to-r from-blue-300 via-blue-200 to-blue-100 hover:from-blue-400 hover:via-blue-300 hover:to-blue-200 text-blue-900 transition-transform hover:scale-105 shadow-md">
+                Open Doubt Solver
+              </Button>
+            </div>
+          </Link>
 
-            {/* soft corner icon */}
-            <MessageCircle
-              aria-hidden
-              className="hidden sm:block absolute -top-8 -right-8 h-32 w-32 text-sky-300/30 rotate-12"
-            />
-          </div>
-        </Link>
-
-        {/* Community Card */}
-        <Link href="/teacher/community" className="group">
-          <div
-            className="
-              relative p-8 rounded-3xl bg-gradient-to-br from-pink-100 via-rose-50 to-purple-100
-              border border-pink-200/60 shadow-md hover:shadow-xl 
-              hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm
-            "
-          >
-            <Users className="h-14 w-14 text-pink-700 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2 text-pink-800 leading-snug">
-              Teacher Community
-            </h2>
-            <p className="text-pink-900/80 mb-6 text-sm sm:text-base">
-              Share ideas, collaborate with educators, and grow together.
-            </p>
-            <Button className="bg-gradient-to-r from-pink-300 to-fuchsia-300 text-pink-900 hover:from-pink-400 hover:to-fuchsia-400 shadow">
-              Join Community
-            </Button>
-
-            {/* soft corner icon */}
-            <Users
-              aria-hidden
-              className="hidden sm:block absolute -bottom-8 -right-8 h-32 w-32 text-rose-300/30 -rotate-12"
-            />
-          </div>
-        </Link>
+          {/* Community Card */}
+          <Link href="/teacher/community">
+            <div className="relative p-8 rounded-3xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-transform cursor-pointer overflow-hidden bg-gradient-to-br from-pink-200 via-pink-100 to-purple-50 border border-pink-300/40 backdrop-blur-sm">
+              <Users className="absolute -bottom-10 -right-10 h-40 w-40 text-pink-300 opacity-30 rotate-12" />
+              <Users className="h-14 w-14 text-pink-700 mb-4" />
+              <h2 className="text-2xl font-semibold mb-2 text-pink-800">Teacher Community</h2>
+              <p className="text-pink-900 mb-4">Share ideas and collaborate with fellow educators.</p>
+              <Button className="bg-gradient-to-r from-pink-300 via-pink-200 to-purple-100 hover:from-pink-400 hover:via-pink-300 hover:to-purple-200 text-pink-900 transition-transform hover:scale-105 shadow-md">
+                Join Community
+              </Button>
+            </div>
+          </Link>
+        </div>
       </div>
     </div>
   );

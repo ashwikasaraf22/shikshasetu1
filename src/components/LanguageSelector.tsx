@@ -21,13 +21,8 @@ const languages = [
   { code: 'mr', label: 'Marathi (मराठी)' },
   { code: 'bn', label: 'Bengali (বাংলা)' },
   { code: 'ta', label: 'Tamil (தமிழ்)' },
-  { code: 'te', label: 'Telugu (తెలుగు)' },
-  { code: 'kn', label: 'Kannada (ಕನ್ನಡ)' },
-  { code: 'ml', label: 'Malayalam (മലയാളം)' },
   { code: 'pa', label: 'Punjabi (ਪੰਜਾਬੀ)' },
   { code: 'as', label: 'Assamese (অসমীয়া)' },
-  { code: 'gu', label: 'Gujarati (ગુજરાતી)' }, // Added Gujarati based on image
-  // Add others like 'or' (Odia) if needed
 ];
 
 export function LanguageSelector() {

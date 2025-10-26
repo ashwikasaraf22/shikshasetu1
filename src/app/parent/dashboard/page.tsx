@@ -291,9 +291,14 @@ export default function ParentDashboard() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight bg-clip-text text-transparent bg-[linear-gradient(90deg,#fb7185,#a78bfa,#34d399)] drop-shadow-sm">
-              {activeChild
-                ? `Progress for ${activeChild.fullName ?? activeChild.email ?? ""}`
-                : "Progress Dashboard"}
+              {activeChild ? (
+                <>
+                  <span><T>Progress for</T></span>{" "}
+                  {activeChild.fullName ?? activeChild.email ?? ""}
+                </>
+              ) : (
+                <T>Progress Dashboard</T>
+              )}
             </h1>
             {activeChild?.className && (
               <p className="text-sm text-slate-600 mt-1">
