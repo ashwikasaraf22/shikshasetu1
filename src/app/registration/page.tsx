@@ -1,7 +1,7 @@
 'use client';
 
 import { T } from '@/components/T';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import {
@@ -10,284 +10,340 @@ import {
   sendEmailVerification,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { User, Mail, Lock, Phone, UserCircle } from 'lucide-react';
 
 type Role = 'student' | 'teacher' | 'parent' | '';
 
-export default function VidyaSetuRegistration() {
+export default function RegistrationPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    role: '' as Role,
-    name: '',
-    email: '',
-    password: '',
-    language: '',
-    phone: '',
-    className: [] as string[],
-    subject: '',
-    childName: '',
-    childEmail: '',
-  });
-
+  const [role, setRole] = useState<Role>('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [language, setLanguage] = useState('');
+  const [phone, setPhone] = useState('');
+  const [className, setClassName] = useState<string[]>([]);
+  const [subject, setSubject] = useState('');
+  const [childName, setChildName] = useState('');
+  const [childEmail, setChildEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSingleClassSelect = (value: string) => {
-    setFormData(prev => ({ ...prev, className: value ? [value] : [] }));
-  };
+  const classOptions = ['7th', '8th', '9th'];
+  const languageOptions = [
+    'English',
+    'Hindi',
+    'Marathi',
+    'Tamil',
+    'Punjabi',
+    'Bengali',
+    'Assamese',
+  ];
+  const subjectOptions = ['Science', 'Maths', 'SSC'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-    if (!formData.role) return alert('Please select a role.');
+
+    if (!role) return alert('Please select a role.');
+    if (role === 'teacher' && className.length === 0)
+      return alert('Teachers must choose at least one class.');
+    if (role === 'teacher' && !subject)
+      return alert('Please select a subject.');
+    if (role !== 'teacher' && !className[0])
+      return alert('Please select a class.');
+    if (role === 'parent' && (!childName || !childEmail))
+      return alert("Please provide your child's name and email.");
+    if ((role === 'teacher' || role === 'parent') && !phone)
+      return alert('Please provide a phone number.');
 
     try {
       setLoading(true);
-      const cred = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-      if (formData.name) {
-        await updateProfile(cred.user, { displayName: formData.name });
-      }
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      if (name) await updateProfile(cred.user, { displayName: name });
 
       const userRef = doc(db, 'users', cred.user.uid);
-      await setDoc(userRef, {
-        ...formData,
+      const base = {
+        role,
+        email,
+        language,
         createdAt: serverTimestamp(),
-      });
+      };
 
-      await sendEmailVerification(cred.user).catch(() => {});
-      alert('✅ Registered successfully! Check your email for verification.');
+      if (role === 'teacher') {
+        await setDoc(userRef, {
+          ...base,
+          fullName: name,
+          className,
+          subject,
+          phoneNumber: phone,
+        });
+      } else if (role === 'student') {
+        await setDoc(userRef, {
+          ...base,
+          fullName: name,
+          className: className[0],
+        });
+      } else if (role === 'parent') {
+        await setDoc(userRef, {
+          ...base,
+          fullName: name,
+          className: className[0],
+          childName,
+          childEmail,
+          phoneNumber: phone,
+        });
+      }
+
+      await sendEmailVerification(cred.user);
+      alert('✅ Registered successfully! Please verify your email.');
       router.push('/login');
     } catch (err: any) {
-      alert(`❌ ${err.message || 'Registration failed'}`);
+      console.error(err);
+      alert('❌ ' + (err.message || 'Registration failed.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const classOptions = ['7th', '8th', '9th'];
-  const languageOptions = ['English', 'Hindi', 'Marathi', 'Tamil', 'Punjabi'];
-  const subjectOptions = ['Science', 'Maths', 'SSC'];
-
-  const InputField = ({ icon: Icon, ...props }: any) => (
-    <div className="relative">
-      <Icon className="absolute left-3 top-3 text-[#ff7e5f]" size={18} />
-      <input
-        {...props}
-        className={`w-full border border-gray-300 rounded-lg p-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-[#feb47b] bg-white/70 placeholder-gray-400 ${props.className || ''}`}
-      />
-    </div>
-  );
+  const toggleClass = (cls: string, checked: boolean) => {
+    setClassName(prev => {
+      const set = new Set(prev);
+      if (checked) set.add(cls);
+      else set.delete(cls);
+      return Array.from(set);
+    });
+  };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#ffecd2] via-[#fcb69f] to-[#a1c4fd] p-6 overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#F6E6FF] via-[#E2D6FF] to-[#D8D0FF] p-6">
+      {/* 🎨 Cute Doodle Background Decorations */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Soft Blobs */}
+        <div className="absolute top-10 left-10 w-40 h-40 bg-pink-200 rounded-full blur-3xl opacity-60 animate-pulse"></div>
+        <div className="absolute bottom-20 right-16 w-48 h-48 bg-purple-200 rounded-full blur-3xl opacity-60 animate-bounce"></div>
 
-      {/* Background decorative images */}
-      <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
-        <img
-          src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png"
-          className="absolute top-16 left-10 w-28 animate-float"
-          alt="student"
-        />
-        <img
-          src="https://cdn-icons-png.flaticon.com/512/1828/1828817.png"
-          className="absolute bottom-16 right-10 w-24 animate-float-slow"
-          alt="book"
-        />
-        <img
-          src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png"
-          className="absolute top-1/2 left-[10%] w-20 animate-float"
-          alt="pencil"
-        />
-        <img
-          src="https://cdn-icons-png.flaticon.com/512/3062/3062634.png"
-          className="absolute bottom-10 left-1/4 w-28 animate-float-slow"
-          alt="globe"
-        />
+        {/* Hand-drawn SVG curves */}
+        <svg
+          className="absolute top-0 left-0 w-full h-full opacity-30"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M0,150 Q150,100 300,150 T600,150 T900,150 T1200,150"
+            stroke="#c7b5ff"
+            fill="transparent"
+            strokeWidth="2"
+          />
+          <path
+            d="M0,400 Q150,450 300,400 T600,400 T900,400 T1200,400"
+            stroke="#f7b9ff"
+            fill="transparent"
+            strokeWidth="2"
+          />
+        </svg>
+
+        {/* Floating Doodles */}
+        <div className="absolute top-10 right-20 text-4xl animate-spin-slow">📚</div>
+        <div className="absolute bottom-16 left-20 text-4xl animate-bounce">✏</div>
+        <div className="absolute top-1/2 left-1/4 text-4xl animate-pulse">🌟</div>
+        <div className="absolute bottom-1/3 right-1/3 text-4xl animate-bounce">🎒</div>
       </div>
 
-      {/* Floating blob effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
-        <div className="absolute -top-20 -left-20 w-96 h-96 bg-pink-300 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-[30rem] h-[30rem] bg-blue-300 rounded-full blur-3xl animate-pulse delay-700"></div>
-      </div>
+      {/* 🌸 Registration Card */}
+      <div className="relative z-10 bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl w-full max-w-md p-8 border border-white/40">
+        <h1 className="text-4xl font-extrabold text-center text-purple-700 mb-3">
+          Vidya Setu
+        </h1>
+        <p className="text-center text-gray-500 mb-6">
+          <T>Join the bridge to better learning</T> 🌱
+        </p>
 
-      {/* Main Card */}
-      <div className="relative z-10 bg-white/80 backdrop-blur-2xl shadow-2xl rounded-3xl w-full max-w-md p-8 border border-white/40 transition-all hover:scale-[1.02] hover:shadow-orange-300/50 duration-300">
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-[#ff7e5f] to-[#feb47b] text-transparent bg-clip-text">
-            Vidya Setu
-          </h1>
-          <p className="text-gray-600 mt-2 text-sm">
-            <T>Join the bridge to better learning 🌈</T>
-          </p>
-        </div>
-
+        {/* 🌼 Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Role */}
           <div>
-            <label className="block font-semibold text-gray-700 mb-1">
-              <T>Select Role</T>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Role
             </label>
             <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
+              value={role}
+              onChange={e => setRole(e.target.value as Role)}
+              className="w-full p-2 border rounded-md"
               required
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] bg-white/70"
             >
-              <option value="">Choose Role</option>
-              <option value="student">🎓 Student</option>
-              <option value="teacher">👩‍🏫 Teacher</option>
-              <option value="parent">👨‍👩‍👧 Parent</option>
+              <option value="">Select your role</option>
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+              <option value="parent">Parent</option>
             </select>
           </div>
 
-          {formData.role && (
-            <>
-              <InputField
-                icon={UserCircle}
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Full Name"
-                required
-              />
-              <InputField
-                icon={Mail}
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Email Address"
-                required
-              />
-              <InputField
-                icon={Lock}
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Password (min 6 chars)"
-                required
-              />
-            </>
-          )}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full p-2 border rounded-md"
+              required
+            />
+          </div>
 
-          {formData.role === 'student' && (
-            <>
-              <select
-                name="classNameSingle"
-                value={formData.className[0] || ''}
-                onChange={e => handleSingleClassSelect(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] bg-white/70"
-              >
-                <option value="">Select Class</option>
-                {classOptions.map(c => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full p-2 border rounded-md"
+              required
+            />
+          </div>
 
-          {formData.role === 'teacher' && (
-            <>
-              <select
-                name="subject"
-                value={formData.subject}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] bg-white/70"
-              >
-                <option value="">Select Subject</option>
-                {subjectOptions.map(s => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <InputField
-                icon={Phone}
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="Phone Number"
-                required
-              />
-            </>
-          )}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full p-2 border rounded-md"
+              required
+            />
+          </div>
 
-          {formData.role === 'parent' && (
-            <>
-              <InputField
-                icon={User}
-                type="text"
-                name="childName"
-                value={formData.childName}
-                onChange={handleChange}
-                placeholder="Child's Name"
-                required
-              />
-              <InputField
-                icon={Mail}
-                type="email"
-                name="childEmail"
-                value={formData.childEmail}
-                onChange={handleChange}
-                placeholder="Child's Email"
-                required
-              />
-            </>
-          )}
-
-          {formData.role && (
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-[#ff7e5f] to-[#feb47b] text-white font-semibold rounded-lg py-3 mt-4 shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-300 disabled:opacity-60"
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Language
+            </label>
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              className="w-full p-2 border rounded-md"
+              required
             >
-              {loading ? <T>Registering...</T> : <T>✨ Register Now ✨</T>}
-            </button>
+              <option value="">Select a language</option>
+              {languageOptions.map(l => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Class & Subject */}
+          {role && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Class
+              </label>
+              {role === 'teacher' ? (
+                <div className="flex gap-3">
+                  {classOptions.map(cls => (
+                    <label key={cls} className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={className.includes(cls)}
+                        onChange={e => toggleClass(cls, e.target.checked)}
+                      />
+                      {cls}
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <select
+                  value={className[0] || ''}
+                  onChange={e => setClassName([e.target.value])}
+                  className="w-full p-2 border rounded-md"
+                  required
+                >
+                  <option value="">Select class</option>
+                  {classOptions.map(cls => (
+                    <option key={cls} value={cls}>
+                      {cls}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           )}
+
+          {role === 'teacher' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Subject
+              </label>
+              <select
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                className="w-full p-2 border rounded-md"
+                required
+              >
+                <option value="">Select subject</option>
+                {subjectOptions.map(sub => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(role === 'teacher' || role === 'parent') && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                className="w-full p-2 border rounded-md"
+                required
+              />
+            </div>
+          )}
+
+          {role === 'parent' && (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Child’s Name
+                </label>
+                <input
+                  type="text"
+                  value={childName}
+                  onChange={e => setChildName(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Child’s Email
+                </label>
+                <input
+                  type="email"
+                  value={childEmail}
+                  onChange={e => setChildEmail(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full mt-4 py-2 bg-gradient-to-r from-purple-500 to-pink-400 text-white rounded-lg hover:brightness-110 transition"
+          >
+            {loading ? 'Registering...' : 'Register'}
+          </button>
         </form>
-
-        <p className="text-center text-gray-600 text-sm mt-6">
-          <T>Already have an account?</T>{' '}
-          <a href="/login" className="text-[#ff7e5f] font-semibold hover:underline">
-            <T>Login</T>
-          </a>
-        </p>
       </div>
-
-      {/* Floating animation */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-15px);
-          }
-        }
-        .animate-float {
-          animation: float 5s ease-in-out infinite;
-        }
-        .animate-float-slow {
-          animation: float 7s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 }
