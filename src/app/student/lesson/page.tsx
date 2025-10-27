@@ -1,167 +1,131 @@
+// src/app/student/lesson/page.tsx
 'use client';
 
-import { T } from '@/components/T'; // Added Import
-import { useState, useEffect, useRef } from "react";
+import { T } from '@/components/T';
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { BookText, PlayCircle, MessageCircle, Eye } from "lucide-react";
+import { BookText, PlayCircle, MessageCircle, Eye, Loader2, Volume2, FileText } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, query, where, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 
-// PDF.js and Helper functions (chunkText, LANGS, slug, clean, etc.) remain unchanged
-function usePdfJs() {
-  const pdfjs = useRef<any>(null);
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const mod = await import("pdfjs-dist/build/pdf");
-      const pdfjsLib: any = mod;
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-      if (mounted) pdfjs.current = pdfjsLib;
-    })();
-    return () => { mounted = false; };
-  }, []);
-  return pdfjs;
+// --- Types ---
+const LANGS = ["Hindi", "Marathi", "Bengali", "Tamil", "English", "Punjabi", "Assamese"] as const;
+type LangLabel = typeof LANGS[number];
+
+type ChapterDoc = {
+  id: string;
+  classGrade: string;
+  subject: string;
+  chapterTitle: string;
+  pdfData?: {
+    url: string;
+    storagePath: string;
+    format: string;
+    bytes: number;
+    resource_type: string;
+  };
+  extractedText?: string;
+  isStatic?: boolean;
+  staticLanguage?: LangLabel;
+  createdAt?: Timestamp;
+};
+
+// --- Static (Hardcoded) Data Structure ---
+const staticSubjects = ["Science", "Maths", "SSC"] as const;
+const staticChaptersByClass: Record<"7" | "8" | "9", Record<string, string[]>> = {
+  "7": { Science: ["Magnets", "Methods of Seperation", "Mindful Eating"], SSC: ["Family", "Oceans and Continents", "Timeline"], Maths: ["Data Handling", "Symmetry", "Lines and Angles"] },
+  "8": { Science: ["Electricity", "Life Processes in Plants", "Life Processes in Animals"], SSC: ["Empires", "Gupta Empire", "Understanding Markets"], Maths: ["Expressions using Letters", "Fractions", "Number Play"] },
+  "9": { Science: ["Is Matter Around Us Pure", "Motion", "Cell Fundamental Unit of Life"], Maths: ["Number System", "Polynomials", "Coordinate Geometry"], SSC: ["French Revolution", "India Size and Location", "What is Democracy Why Democracy", "The Story of Village Palampur"] },
+};
+
+// --- Helpers ---
+const getClassNumber = (cn?: string | null): '7' | '8' | '9' => {
+  if (!cn) return "9";
+  const s = String(cn).trim().toLowerCase();
+  const m = s.match(/(?:class|std|standard)?\s*(\d{1,2})/i);
+  if (m) { const n = parseInt(m[1],10); if ([7,8,9].includes(n)) return String(n) as "7"|"8"|"9"; }
+  if (/7th/.test(s)||/\bvii\b/.test(s)||/\bseven|saat\b/.test(s)) return "7";
+  if (/8th/.test(s)||/\bviii\b/.test(s)||/\beight|aath\b/.test(s)) return "8";
+  if (/9th/.test(s)||/\bix\b/.test(s)||/\bnine|nau\b/.test(s)) return "9";
+  return "9";
+};
+const slug = (s: string = '') => s.trim().toLowerCase().replace(/\s+/g, '-');
+const clean = (s: string = '') => s.replace(/\s+/g, "").toLowerCase();
+
+async function fetchTxtOnly(url: string): Promise<{ ok: boolean; status: number; text: string }> {
+  try { const res = await fetch(url, { cache: "no-store" }); if (!res.ok) return { ok: false, status: res.status, text: "" }; const text = await res.text(); return { ok: true, status: 200, text: text?.trim() ?? "" }; } catch { return { ok: false, status: 0, text: "" }; }
 }
-function chunkText(text: string, maxLen = 1600) { /* ... implementation ... */
-  const sentences = text
-    .replace(/\s+/g, " ")
-    .split(/([.?!]|।|\n)/)
-    .reduce<string[]>((acc, part, idx, arr) => {
-      if (idx % 2 === 0) acc.push((part + (arr[idx + 1] || "")).trim());
-      return acc;
-    }, [])
-    .filter(Boolean);
-
+function chunkText(text: string, maxLen = 180): string[] {
+  const sentences = text.replace(/\s+/g, " ").split(/([.?!]|।|\n)/).reduce<string[]>((acc, part, idx, arr) => {
+    if (idx % 2 === 0 && part) { acc.push((part + (arr[idx + 1] || "")).trim()); }
+    return acc;
+  }, []).filter(Boolean);
   const chunks: string[] = [];
-  let buf = "";
-  for (const s of sentences) {
-    const next = (buf ? buf + " " : "") + s;
-    if (next.length > maxLen) {
-      if (buf) chunks.push(buf.trim());
-      if (s.length > maxLen) {
-        for (let i = 0; i < s.length; i += maxLen) chunks.push(s.slice(i, i + maxLen));
-        buf = "";
-      } else {
-        buf = s;
-      }
+  let currentChunk = "";
+  for (const sentence of sentences) {
+    if (currentChunk && (currentChunk.length + sentence.length + 1) > maxLen) {
+      chunks.push(currentChunk.trim());
+      if (sentence.length > maxLen) {
+        for (let i = 0; i < sentence.length; i += maxLen) { chunks.push(sentence.substring(i, i + maxLen).trim()); }
+        currentChunk = "";
+      } else { currentChunk = sentence; }
     } else {
-      buf = next;
+      currentChunk = (currentChunk ? currentChunk + " " : "") + sentence;
     }
   }
-  if (buf) chunks.push(buf.trim());
-  return chunks;
+  if (currentChunk) chunks.push(currentChunk.trim());
+  return chunks.filter(Boolean);
 }
-const LANGS = ["Hindi","Marathi","Bengali","Tamil","English","Punjabi","Assamese"] as const;
-type LangLabel = typeof LANGS[number];
-const slug  = (s:string)=> s.trim().toLowerCase();
-const clean = (s:string)=> s.replace(/\s+/g,"").toLowerCase();
-const LISTEN_KINDS = ["Chapter", "Explanation"] as const;
-type ListenKind = typeof LISTEN_KINDS[number];
-async function fetchTxtOnly(url: string) { /* ... implementation ... */
-    try {
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) return { ok: false, status: res.status, text: "" };
-        const text = await res.text();
-        return { ok: true, status: 200, text: text?.trim() ?? "" };
-    } catch {
-        return { ok: false, status: 0, text: "" };
-    }
+function ensureVoicesLoaded(): Promise<SpeechSynthesisVoice[]> {
+  const synth = window.speechSynthesis; const existing = synth.getVoices();
+  if (existing && existing.length > 0) return Promise.resolve(existing);
+  return new Promise((resolve) => {
+    const handler = () => { synth.onvoiceschanged = null; resolve(synth.getVoices()); };
+    synth.onvoiceschanged = handler;
+    setTimeout(() => { synth.onvoiceschanged = null; resolve(synth.getVoices()); }, 800);
+  });
 }
-async function fetchIfExists(url: string, asText=false) { /* ... implementation ... */
-    try {
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) return { ok:false, status: res.status as number, data: null as any };
-        const data = asText ? await res.text() : await res.arrayBuffer();
-        return { ok:true, status: 200, data };
-    } catch {
-        return { ok:false, status: 0, data: null };
-    }
-}
-type TextSource = { kind: "txt"; url: string; text: string } | { kind: "html"; url: string; text: string };
-function extractTextFromHtmlString(html: string): string { /* ... implementation ... */
-    const prepared = html
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<\/p>/gi, "\n\n");
-    const doc = new DOMParser().parseFromString(prepared, "text/html");
-    const text = doc?.body?.textContent || "";
-    return text.trim();
-}
-async function resolveTextFirstThenHtml(subject:string, language:LangLabel, chapter:string): Promise<TextSource> { /* ... implementation ... */
-    const base = `/pdfs/${slug(subject)}/${slug(language)}/${clean(chapter)}`;
-    const txtUrl = `${base}.txt`;
-    const txtTry = await fetchIfExists(txtUrl, true);
-    if (txtTry.ok) {
-        const text = String(txtTry.data).trim();
-        if (text) return { kind:"txt", url: txtUrl, text };
-    }
-    const htmlUrl = `${base}.html`;
-    const htmlTry = await fetchIfExists(htmlUrl, true);
-    if (htmlTry.ok) {
-        const raw = String(htmlTry.data);
-        const text = extractTextFromHtmlString(raw);
-        if (text) return { kind:"html", url: htmlUrl, text };
-    }
-    const missing = [txtUrl, htmlUrl].join("\n");
-    throw new Error(`Neither TXT nor HTML was found.\nTried:\n${missing}`);
-}
-function ensureVoicesLoaded(): Promise<SpeechSynthesisVoice[]> { /* ... implementation ... */
-    const synth = window.speechSynthesis;
-    const existing = synth.getVoices();
-    if (existing && existing.length > 0) return Promise.resolve(existing);
-    return new Promise((resolve) => {
-        const handler = () => {
-        synth.onvoiceschanged = null;
-        resolve(synth.getVoices());
-        };
-        synth.onvoiceschanged = handler;
-        setTimeout(() => {
-        synth.onvoiceschanged = null;
-        resolve(synth.getVoices());
-        }, 800);
-    });
-}
-function pickGoogleHindiStrict(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null { /* ... implementation ... */
-    return voices.find(v => /google/i.test(v.name) && /hi-IN/i.test(v.lang)) || null;
+function pickGoogleHindiStrict(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  if (!voices) return null;
+  const googleHindi = voices.find(v => /google/i.test(v.name) && /hi-IN/i.test(v.lang));
+  if (googleHindi) return googleHindi;
+  return voices.find(v => /hi-IN/i.test(v.lang)) || null;
 }
 
+// --- Component ---
 export default function LessonPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const studentClass = user?.role === "student" ? (user.className as string | undefined) : undefined;
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const studentClassGrade = useMemo(() => getClassNumber(user?.className), [user?.className]);
 
-  // Subjects & chapters definitions remain the same
-  const subjects = ["Science","Maths","SSC"] as const;
-  const chaptersByClass: Record<"7"|"8"|"9", Record<string,string[]>> = {
-    "7": { Science:["Magnets","Methods of Seperation","Mindful Eating"], SSC:["Family","Oceans and Continents","Timeline"], Maths:["Data Handling","Symmetry","Lines and Angles"] },
-    "8": { Science:["Electricity","Life Processes in Plants","Life Processes in Animals"], SSC:["Empires","Gupta Empire","Understanding Markets"], Maths:["Expressions using Letters","Fractions","Number Play"] },
-    "9": { Science:["Is Matter Around Us Pure","Motion","Cell Fundamental Unit of Life"], Maths:["Number System","Polynomials","Coordinate Geometry"], SSC:["French Revolution","India Size and Location","What is Democracy Why Democracy","The Story of Village Palampur"] },
-  };
-  const getClassNumber = (cn?:string|null) => { /* ... implementation ... */
-    if (!cn) return "9";
-    const s = String(cn).trim().toLowerCase();
-    const m = s.match(/(?:class|std|standard)?\s*(\d{1,2})/i);
-    if (m) { const n = parseInt(m[1],10); if ([7,8,9].includes(n)) return String(n) as "7"|"8"|"9"; }
-    if (/7th/.test(s)||/\bvii\b/.test(s)||/\bseven|saat\b/.test(s)) return "7";
-    if (/8th/.test(s)||/\bviii\b/.test(s)||/\beight|aath\b/.test(s)) return "8";
-    if (/9th/.test(s)||/\bix\b/.test(s)||/\bnine|nau\b/.test(s)) return "9";
-    return "9";
-  };
-  const getChaptersFor = (subject:string, cn?:string|null) => chaptersByClass[getClassNumber(cn) as "7"|"8"|"9"]?.[subject] ?? [];
+  // --- State ---
+  const [dynamicChapters, setDynamicChapters] = useState<ChapterDoc[]>([]);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(true);
 
-
-  // State hooks remain the same
-  const [ebookSubject, setEbookSubject] = useState("");
-  const [ebookChapter, setEbookChapter] = useState("");
+  const [ebookSubject, setEbookSubject] = useState<string>("");
+  const [ebookChapterTitle, setEbookChapterTitle] = useState<string>("");
   const [ebookLanguage, setEbookLanguage] = useState<LangLabel | "">("");
-  const ebookPdf = ebookSubject && ebookChapter && ebookLanguage
-    ? `/pdfs/${slug(ebookSubject)}/${slug(ebookLanguage)}/${clean(ebookChapter)}.pdf`
-    : null;
 
   const [audioSubject, setAudioSubject] = useState("");
-  const [audioChapter, setAudioChapter] = useState("");
-  const [ttsLanguage, setTtsLanguage] = useState<LangLabel>("Hindi");
-  const [listenKind, setListenKind] = useState<ListenKind>("Chapter");
+  const [audioChapterTitle, setAudioChapterTitle] = useState("");
+  const [audioLanguage, setAudioLanguage] = useState<LangLabel>("Hindi");
+
+  const [explainSubject, setExplainSubject] = useState("");
+  const [explainChapterTitle, setExplainChapterTitle] = useState("");
+  const [explainLanguage, setExplainLanguage] = useState<LangLabel | "">("");
+
+  const [quizSubject, setQuizSubject] = useState("");
+  const [quizChapterTitle, setQuizChapterTitle] = useState("");
+  const [quizLanguage, setQuizLanguage] = useState<LangLabel | "">("");
+
+  // TTS state
   const [rate, setRate] = useState(1);
   const [ttsLoading, setTtsLoading] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -171,352 +135,479 @@ export default function LessonPage() {
   const queueRef = useRef<string[]>([]);
   const chunkIdxRef = useRef(0);
   const userActionRequiredRef = useRef(false);
-  const pdfjs = usePdfJs();
+  const [ttsStatus, setTtsStatus] = useState<string | null>(null);
 
-  const [explainSubject, setExplainSubject] = useState("");
-  const [explainChapter, setExplainChapter] = useState("");
-  const [explainLanguage, setExplainLanguage] = useState<LangLabel | "">("");
-  const [quizSubject, setQuizSubject] = useState("");
-  const [quizChapter, setQuizChapter] = useState("");
-  const [quizLanguage, setQuizLanguage] = useState<LangLabel | "">("");
+  // --- Derived ---
+  const combinedSubjects = useMemo(() => {
+    const dynamicSubs = new Set(dynamicChapters.map(c => c.subject));
+    const staticSubs = new Set(staticSubjects);
+    return Array.from(new Set([...dynamicSubs, ...staticSubs])).sort();
+  }, [dynamicChapters]);
 
-  const explanationPdf = explainSubject && explainChapter && explainLanguage
-    ? `/explanations/${slug(explainSubject)}/${slug(explainLanguage)}/${clean(explainChapter)}.txt`
-    : null;
+  const getCombinedChapters = (subject: string): string[] => {
+    if (!subject) return [];
+    const dynamicChaps = new Set(dynamicChapters.filter(c => c.subject === subject).map(c => c.chapterTitle));
+    const staticChaps = new Set(staticChaptersByClass[studentClassGrade]?.[subject] ?? []);
+    return Array.from(new Set([...dynamicChaps, ...staticChaps])).sort();
+  };
 
-  // Effects and TTS logic remain unchanged
-    useEffect(() => {
-        (async () => {
+  const chaptersForEbookSubject = useMemo(() => getCombinedChapters(ebookSubject), [ebookSubject, dynamicChapters, studentClassGrade]);
+  const chaptersForAudioSubject = useMemo(() => getCombinedChapters(audioSubject), [audioSubject, dynamicChapters, studentClassGrade]);
+  const chaptersForExplainSubject = useMemo(() => getCombinedChapters(explainSubject), [explainSubject, dynamicChapters, studentClassGrade]);
+  const chaptersForQuizSubject = useMemo(() => getCombinedChapters(quizSubject), [quizSubject, dynamicChapters, studentClassGrade]);
+
+  // --- Content sources (Firestore first, static fallback) ---
+  const ebookUrl = useMemo(() => {
+    const dynamicDoc = dynamicChapters.find(c => c.subject === ebookSubject && c.chapterTitle === ebookChapterTitle);
+    if (dynamicDoc?.pdfData?.url) return dynamicDoc.pdfData.url;
+    if (ebookSubject && ebookChapterTitle && ebookLanguage) {
+      return `/pdfs/${slug(ebookSubject)}/${slug(ebookLanguage)}/${clean(ebookChapterTitle)}.pdf`;
+    }
+    return null;
+  }, [dynamicChapters, ebookSubject, ebookChapterTitle, ebookLanguage]);
+
+  const audioContentSource = useMemo(() => {
+    const dynamicDoc = dynamicChapters.find(c => c.subject === audioSubject && c.chapterTitle === audioChapterTitle);
+    if (dynamicDoc?.extractedText !== undefined && dynamicDoc?.extractedText !== null) {
+      return { type: 'text', content: dynamicDoc.extractedText } as const;
+    }
+    if (audioSubject && audioChapterTitle && audioLanguage) {
+      const txtPath = `/pdfs/${slug(audioSubject)}/${slug(audioLanguage)}/${clean(audioChapterTitle)}.txt`;
+      return { type: 'url', content: txtPath } as const;
+    }
+    return null;
+  }, [dynamicChapters, audioSubject, audioChapterTitle, audioLanguage]);
+
+  const explanationContentSource = useMemo(() => {
+    const dynamicDoc = dynamicChapters.find(c => c.subject === explainSubject && c.chapterTitle === explainChapterTitle);
+    if (dynamicDoc?.extractedText !== undefined && dynamicDoc?.extractedText !== null) {
+      return { type: 'text', content: dynamicDoc.extractedText } as const;
+    }
+    if (explainSubject && explainChapterTitle && explainLanguage) {
+      const txtPath = `/explanations/${slug(explainSubject)}/${slug(explainLanguage)}/${clean(explainChapterTitle)}.txt`;
+      return { type: 'url', content: txtPath } as const;
+    }
+    return null;
+  }, [dynamicChapters, explainSubject, explainChapterTitle, explainLanguage]);
+
+  // --- Fetch Dynamic Chapters ---
+  useEffect(() => {
+    if (authLoading || !user || !studentClassGrade) {
+      setIsLoadingChapters(authLoading);
+      return;
+    }
+
+    setIsLoadingChapters(true);
+    setDynamicChapters([]);
+
+    const chaptersQuery = query(
+      collection(db, 'chapters'),
+      where('classGrade', '==', studentClassGrade)
+    );
+
+    getDocs(chaptersQuery)
+      .then((snapshot) => {
+        const chaptersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChapterDoc));
+        setDynamicChapters(chaptersData);
+
+        const latestCombinedSubjects = Array.from(new Set([...new Set(chaptersData.map(c => c.subject)), ...staticSubjects])).sort();
+        const currentSubjects = new Set(latestCombinedSubjects);
+
+        if (ebookSubject && !currentSubjects.has(ebookSubject)) { setEbookSubject(""); setEbookChapterTitle(""); setEbookLanguage(""); }
+        if (audioSubject && !currentSubjects.has(audioSubject)) { setAudioSubject(""); setAudioChapterTitle(""); setAudioLanguage("Hindi"); }
+        if (explainSubject && !currentSubjects.has(explainSubject)) { setExplainSubject(""); setExplainChapterTitle(""); setExplainLanguage(""); }
+        if (quizSubject && !currentSubjects.has(quizSubject)) { setQuizSubject(""); setQuizChapterTitle(""); setQuizLanguage(""); }
+
+        const ebookChaps = getCombinedChapters(ebookSubject);
+        if (ebookChapterTitle && !ebookChaps.includes(ebookChapterTitle)) { setEbookChapterTitle(""); setEbookLanguage(""); }
+        const audioChaps = getCombinedChapters(audioSubject);
+        if (audioChapterTitle && !audioChaps.includes(audioChapterTitle)) { setAudioChapterTitle(""); }
+        const explainChaps = getCombinedChapters(explainSubject);
+        if (explainChapterTitle && !explainChaps.includes(explainChapterTitle)) { setExplainChapterTitle(""); setExplainLanguage(""); }
+        const quizChaps = getCombinedChapters(quizSubject);
+        if (quizChapterTitle && !quizChaps.includes(quizChapterTitle)) { setQuizChapterTitle(""); setQuizLanguage(""); }
+      })
+      .catch((error) => {
+        if ((error as any).code === 'permission-denied') {
+          toast({ variant: "destructive", title: "Access Denied", description: "Could not load chapters. Please check Firestore rules." });
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Could not load dynamic chapters." });
+        }
+        setDynamicChapters([]);
+      })
+      .finally(() => setIsLoadingChapters(false));
+  }, [user, authLoading, studentClassGrade, toast]);
+
+  // --- Event Handlers ---
+  const writeContentRead = async ({ kind, subject, chapter }: { kind: 'ebook' | 'explanation'; subject: string; chapter: string; }) => {
+    if (!user?.uid) return;
+    try {
+      await addDoc(collection(db, 'contentReads'), {
+        studentID: user.uid,
+        kind,
+        class: studentClassGrade,
+        subject,
+        chapter,
+        timestamp: serverTimestamp(),
+      });
+    } catch (e) { console.error('Failed to log content read:', e); }
+  };
+
+  const onOpenEbook = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!ebookUrl || !ebookSubject || !ebookChapterTitle) return;
+    e.preventDefault();
+    await writeContentRead({ kind: 'ebook', subject: ebookSubject, chapter: ebookChapterTitle });
+    window.open(ebookUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  // --- TTS Logic ---
+  useEffect(() => { (async () => { const voices = await ensureVoicesLoaded(); voiceRef.current = pickGoogleHindiStrict(voices); })(); }, []);
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        if (speaking && !paused) { window.speechSynthesis.pause(); setPaused(true); userActionRequiredRef.current = true; }
+      } else {
+        if (speaking && paused) { window.speechSynthesis.pause(); }
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [speaking, paused]);
+  useEffect(() => { return () => { try { window.speechSynthesis.cancel(); } catch {} }; }, []);
+  const resetPlayback = () => {
+    window.speechSynthesis.cancel(); currentUtterance.current = null; queueRef.current = []; chunkIdxRef.current = 0; setSpeaking(false); setPaused(false); userActionRequiredRef.current = false; setTtsStatus(null);
+  };
+  const speakChunks = () => {
+    const synth = window.speechSynthesis;
+    const next = () => {
+      if (chunkIdxRef.current >= queueRef.current.length || !speaking) { resetPlayback(); return; }
+      const text = queueRef.current[chunkIdxRef.current];
+      const utt = new SpeechSynthesisUtterance(text);
+      currentUtterance.current = utt;
+      if (voiceRef.current) utt.voice = voiceRef.current;
+      utt.lang = voiceRef.current?.lang || 'hi-IN';
+      utt.rate = rate;
+      utt.onend = () => { if (paused || !speaking) return; chunkIdxRef.current++; setTtsStatus(`Playing chunk ${chunkIdxRef.current + 1}/${queueRef.current.length}`); next(); };
+      utt.onerror = () => { if (paused || !speaking) return; chunkIdxRef.current++; next(); };
+      if (!synth) { resetPlayback(); return; }
+      try { synth.speak(utt); } catch { resetPlayback(); }
+    };
+    setTimeout(next, 50);
+  };
+  const handlePlayAudio = async () => {
+    resetPlayback();
+    if (!audioSubject || !audioChapterTitle) { toast({ variant: "destructive", title: "Selection Required", description: "Please select Subject and Chapter." }); return; }
+    if (!audioContentSource) { toast({ variant: "destructive", title: "Content Not Found", description: "Could not find audio content for this selection." }); return; }
+
+    setTtsLoading(true);
+    setTtsStatus("Preparing audio...");
+    let textToSpeak = "";
+
+    try {
+      if (audioContentSource.type === 'text') {
+        textToSpeak = audioContentSource.content;
+      } else {
+        setTtsStatus(`Loading text from ${audioContentSource.content}...`);
+        const txtResult = await fetchTxtOnly(audioContentSource.content);
+        if (!txtResult.ok || !txtResult.text) throw new Error(`Could not load text content for audio from: ${audioContentSource.content}. Make sure the file exists.`);
+        textToSpeak = txtResult.text;
+      }
+
+      if (!textToSpeak?.trim()) throw new Error("No text content found to speak.");
+
+      if (!voiceRef.current) {
         const voices = await ensureVoicesLoaded();
         voiceRef.current = pickGoogleHindiStrict(voices);
-        })();
-    }, []);
+      }
+      if (!voiceRef.current && audioLanguage === 'Hindi') { throw new Error("Google हिन्दी (hi-IN) voice unavailable."); }
 
-    useEffect(() => {
-        const onVis = () => { /* ... implementation ... */
-            if (document.visibilityState === "hidden") {
-                if (speaking && !paused) {
-                window.speechSynthesis.pause();
-                setPaused(true);
-                userActionRequiredRef.current = true;
-                }
-            } else {
-                if (speaking && paused) {
-                window.speechSynthesis.pause();
-                }
-            }
-        };
-        document.addEventListener("visibilitychange", onVis);
-        return () => document.removeEventListener("visibilitychange", onVis);
-    }, [speaking, paused]);
+      const chunks = chunkText(textToSpeak);
+      if (chunks.length === 0) throw new Error("No text found after processing.");
 
-    useEffect(() => {
-        return () => { try { window.speechSynthesis.cancel(); } catch {} };
-    }, []);
+      queueRef.current = chunks; chunkIdxRef.current = 0;
+      setSpeaking(true); setPaused(false); userActionRequiredRef.current = false;
+      setTtsStatus(`Playing chunk 1/${chunks.length}`);
+      speakChunks();
+    } catch (e: any) {
+      setTtsStatus(`Error: ${e?.message || "Failed to start audio."}`);
+      toast({ variant: "destructive", title: "Audio Error", description: e?.message || "Failed to start audio." });
+      resetPlayback();
+    } finally { setTtsLoading(false); }
+  };
+  const handlePause = () => { if (!speaking || paused) return; window.speechSynthesis.pause(); setPaused(true); userActionRequiredRef.current = true; setTtsStatus("Paused"); };
+  const handleResume = () => { if (!speaking || !paused || !userActionRequiredRef.current) return; window.speechSynthesis.resume(); setPaused(false); userActionRequiredRef.current = false; setTtsStatus(`Playing chunk ${chunkIdxRef.current + 1}/${queueRef.current.length}`); };
+  const handleStop = () => resetPlayback();
 
-    const resetPlayback = () => { /* ... implementation ... */
-        window.speechSynthesis.cancel();
-        currentUtterance.current = null;
-        queueRef.current = [];
-        chunkIdxRef.current = 0;
-        setSpeaking(false);
-        setPaused(false);
-        userActionRequiredRef.current = false;
-    };
-    const speakChunks = () => { /* ... implementation ... */
-        const synth = window.speechSynthesis;
-        const next = () => {
-            if (chunkIdxRef.current >= queueRef.current.length) {
-                setSpeaking(false);
-                setPaused(false);
-                userActionRequiredRef.current = false;
-                return;
-            }
-            const text = queueRef.current[chunkIdxRef.current];
-            const utt = new SpeechSynthesisUtterance(text);
-            currentUtterance.current = utt;
-
-            if (voiceRef.current) utt.voice = voiceRef.current;
-            utt.rate = rate;
-
-            utt.onend = () => { if (paused) return; chunkIdxRef.current++; next(); };
-            utt.onerror = () => { chunkIdxRef.current++; next(); };
-
-            synth.speak(utt);
-        };
-        next();
-    };
-    const handlePlayAudio = async () => { /* ... implementation ... */
-        resetPlayback();
-        try {
-            if (!audioSubject || !audioChapter) return alert("Please select a Subject and Chapter.");
-            setTtsLoading(true);
-            if (!voiceRef.current) {
-                const voices = await ensureVoicesLoaded();
-                voiceRef.current = pickGoogleHindiStrict(voices);
-            }
-            if (!voiceRef.current) return alert("Google हिन्दी (hi-IN) voice unavailable.");
-
-            const basePath = listenKind === "Chapter" ? `/pdfs/${slug(audioSubject)}/${slug(ttsLanguage)}/${clean(audioChapter)}.txt` : `/explanations/${slug(audioSubject)}/${slug(ttsLanguage)}/${clean(audioChapter)}.txt`;
-            const txt = await fetchTxtOnly(basePath);
-            if (!txt.ok || !txt.text) return alert(`Could not load: ${basePath}`);
-
-            const chunks = chunkText(txt.text);
-            queueRef.current = chunks;
-            setSpeaking(true);
-            setPaused(false);
-            userActionRequiredRef.current = false;
-            speakChunks();
-        } catch (e: any) { alert(e?.message || "Failed to start audio."); }
-        finally { setTtsLoading(false); }
-    };
-    const handlePause = () => { /* ... implementation ... */
-        if (!speaking || paused) return;
-        window.speechSynthesis.pause();
-        setPaused(true);
-        userActionRequiredRef.current = true;
-    };
-    const handleResume = () => { /* ... implementation ... */
-        if (!speaking || !paused || !userActionRequiredRef.current) return;
-        window.speechSynthesis.resume();
-        setPaused(false);
-        userActionRequiredRef.current = false;
-    };
-    const handleStop = () => resetPlayback();
-
-  // Firestore write helper remains the same
-    const writeContentRead = async ({ kind, subject, chapter }: { kind: 'ebook' | 'explanation'; subject: string; chapter: string; }) => { /* ... implementation ... */
-        if (!user?.uid) return;
-        try {
-            await addDoc(collection(db, 'contentReads'), {
-                studentID: user.uid,
-                kind,
-                class: getClassNumber(studentClass),
-                subject,
-                chapter,
-                timestamp: serverTimestamp(),
-            });
-        } catch (e) { console.error('Failed to log content read:', e); }
-    };
-    const onOpenEbook = async (e: React.MouseEvent<HTMLAnchorElement>) => { /* ... implementation ... */
-        if (!ebookPdf || !ebookSubject || !ebookChapter) return;
-        e.preventDefault();
-        await writeContentRead({ kind: 'ebook', subject: ebookSubject, chapter: ebookChapter });
-        window.open(ebookPdf, '_blank', 'noopener,noreferrer');
-    };
-    const onOpenExplanation = async (e: React.MouseEvent<HTMLAnchorElement>) => { /* ... implementation ... */
-        if (!explanationPdf || !explainSubject || !explainChapter) return;
-        e.preventDefault();
-        await writeContentRead({ kind: 'explanation', subject: explainSubject, chapter: explainChapter });
-        window.open(explanationPdf, '_blank', 'noopener,noreferrer');
-    };
-
+  // --- Render ---
+  if (authLoading || isLoadingChapters) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-3 text-sm font-medium text-gray-700"><T>Loading Chapters...</T></p>
+      </div>
+    );
+  }
+  if (!user) return <p className="text-center mt-20"><T>Please log in.</T></p>;
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-[#ECE7FF] via-[#F6F3FF] to-[#E3F1FF] text-gray-800 overflow-hidden">
-      {/* Decorative blobs & Doodles remain the same */}
-      <div className="pointer-events-none absolute -top-24 -left-20 w-96 h-96 bg-[#F1EBFF] rounded-full blur-3xl opacity-60 animate-pulse" />
-      <div className="pointer-events-none absolute bottom-0 right-0 w-[28rem] h-[28rem] bg-[#DFF3FF] rounded-full blur-3xl opacity-60 animate-pulse delay-700" />
-      <svg className="pointer-events-none absolute top-10 left-10 w-40 h-40 opacity-70" viewBox="0 0 200 200" fill="none">
-        <path d="M40 100 q40 -20 80 0 q-40 20 -80 0" stroke="#B9C8FF" strokeWidth="4" fill="none" />
-        <circle cx="150" cy="70" r="10" fill="#FFD7E5" />
-      </svg>
-      <svg className="pointer-events-none absolute bottom-20 right-20 w-52 h-52 opacity-70" viewBox="0 0 200 200" fill="none">
-        <rect x="100" y="50" width="60" height="12" rx="3" fill="#FBE2A8" />
-        <path d="M100 56 h60" stroke="#F6CC70" strokeWidth="2" />
-        <circle cx="70" cy="130" r="14" fill="#CFE7FF" />
-      </svg>
+    <div className="relative min-h-screen bg-gradient-to-br from-[#F6F3FF] via-[#F5FAFF] to-[#EEF3FF] text-gray-800 overflow-hidden">
+      {/* subtle background accents */}
+      <div className="pointer-events-none absolute -top-24 -left-24 w-[28rem] h-[28rem] bg-[#EEE7FF] rounded-full blur-3xl opacity-40" />
+      <div className="pointer-events-none absolute bottom-0 right-0 w-[26rem] h-[26rem] bg-[#E0F2FF] rounded-full blur-3xl opacity-40" />
 
-      <div className="relative z-10 p-6 max-w-6xl mx-auto w-full">
-        {/* Back & Home Buttons */}
-        <div className="flex justify-start mb-6 gap-3">
-          <button
-            className="px-4 py-2 bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110"
-            onClick={() => router.back()}
-          >
-            <T>Back</T>
-          </button>
-          {/* New Home Button */}
-          <button
-            className="px-4 py-2 bg-gradient-to-r from-[#6B5BBE] to-[#A1B5FF] text-white rounded-xl hover:brightness-110"
-            onClick={() => router.push('/home')}
-          >
-            <T>Home</T>
-          </button>
+      <div className="relative z-10 p-6 max-w-7xl mx-auto w-full">
+        {/* Top bar aligned */}
+        <div className="flex items-center justify-between mb-6 gap-3">
+          <div className="flex gap-3">
+            <Button className="bg-gradient-to-r from-[#9B87F5] to-[#7C6BF2] text-white rounded-xl hover:brightness-110" onClick={() => router.back()}><T>Back</T></Button>
+            <Button className="bg-gradient-to-r from-[#6B5BBE] to-[#A1B5FF] text-white rounded-xl hover:brightness-110" onClick={() => router.push('/home')}><T>Home</T></Button>
+          </div>
+          <div className="text-xs text-gray-600 bg-white/70 border border-gray-200 rounded-md px-2 py-1">
+            <T>Class</T>: {studentClassGrade}
+          </div>
         </div>
 
         {/* Title */}
-        <h1 className="text-3x2 sm:text-5xl font-extrabold text-center text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm mb-12">
+        <h1 className="text-3xl sm:text-5xl font-extrabold text-center text-transparent bg-clip-text bg-gradient-to-r from-[#6B5BBE] via-[#7C6BF2] to-[#A1B5FF] drop-shadow-sm mb-2">
           <T>Start a New Lesson</T>
         </h1>
+        <p className="text-center text-sm text-gray-600 mb-8">
+          <T>Choose a subject and chapter to read, listen, learn, or test yourself.</T>
+        </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          {/* E-book */}
-          <div className="relative bg-gradient-to-br from-purple-200 via-purple-100 to-purple-50 p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden">
-            <BookText className="absolute -top-10 -left-10 h-40 w-40 text-purple-300 opacity-40 rotate-12" />
-            <BookText className="h-12 w-12 text-purple-600 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2 text-purple-700"><T>E-book</T></h2>
-            <p><T>Read chapters from your subjects at your own pace.</T></p>
-
-            <div className="mt-4 space-y-3">
-              <select className="w-full p-3 border rounded-lg" value={ebookSubject} onChange={(e)=>{ setEbookSubject(e.target.value); setEbookChapter(""); setEbookLanguage(""); }}>
-                <option value=""><T>Select Subject</T></option>
-                {subjects.map((s)=><option key={s} value={s}>{s}</option>)}
-              </select>
-
-              {ebookSubject && (
-                <select className="w-full p-3 border rounded-lg" value={ebookChapter} onChange={(e)=>{ setEbookChapter(e.target.value); setEbookLanguage(""); }}>
-                  <option value=""><T>Select Chapter</T></option>
-                  {getChaptersFor(ebookSubject, studentClass).map((c)=><option key={c} value={c}>{c}</option>)}
-                </select>
-              )}
-
-              {ebookChapter && (
-                <select className="w-full p-3 border rounded-lg" value={ebookLanguage} onChange={(e)=>setEbookLanguage(e.target.value as LangLabel)}>
-                  <option value=""><T>Select Language</T></option>
-                  {LANGS.map((lang)=><option key={lang} value={lang}>{lang}</option>)}
-                </select>
-              )}
-
-              {ebookSubject && ebookChapter && ebookLanguage && (
-                <div className="flex flex-col sm:flex-row gap-3 mt-4"> {/* Added mt-4 */}
-                  <a href={ebookPdf!} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-center" onClick={onOpenEbook}>
-                    <T>Open E-book PDF</T>
-                  </a>
-                </div>
-              )}
-            </div>
+        {/* Empty State */}
+        {combinedSubjects.length === 0 && (
+          <div className="text-center py-10 bg-white/70 rounded-2xl shadow border border-amber-200">
+            <p className="font-semibold text-amber-800"><T>No Chapters Available</T></p>
+            <p className="text-sm text-amber-700 mt-1"><T>Content for your class ({studentClassGrade}) may not be available yet.</T></p>
           </div>
+        )}
 
-          {/* Audio Book */}
-          <div className="relative bg-gradient-to-br from-emerald-200 via-emerald-100 to-emerald-50 p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden">
-            <PlayCircle className="absolute -top-10 -left-10 h-40 w-40 text-emerald-300 opacity-40 rotate-12" />
-            <div className="relative z-10">
-              <PlayCircle className="h-12 w-12 text-emerald-600 mb-4" />
-              <h2 className="text-2xl font-semibold mb-2 text-emerald-700"><T>Audio Book</T></h2>
-              <p className="text-gray-700"><T>Listen to chapters or explanations with clear, natural speech.</T></p>
-
-              <div className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700"><T>Choose Subject</T></label>
-                    <select className="w-full p-3 border rounded-lg bg-white" value={audioSubject} onChange={(e) => { setAudioSubject(e.target.value); setAudioChapter(""); }}>
-                      <option value=""><T>Select</T></option>
-                      {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700"><T>Choose Chapter</T></label>
-                    <select className="w-full p-3 border rounded-lg bg-white" value={audioChapter} onChange={(e) => setAudioChapter(e.target.value)} disabled={!audioSubject}>
-                      <option value="">{audioSubject ? <T>Select</T> : <T>Select Subject first</T>}</option>
-                      {audioSubject && getChaptersFor(audioSubject, studentClass).map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
+        {/* --- Main Content Grid (equal heights) --- */}
+        {combinedSubjects.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12 auto-rows-fr">
+            {/* --- E-book Section --- */}
+            <section className="relative h-full flex flex-col bg-gradient-to-br from-purple-200 via-purple-100 to-purple-50 p-6 sm:p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden lg:col-span-6">
+              <div className="flex items-center gap-3">
+                <BookText className="h-10 w-10 text-purple-600" />
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-purple-700"><T>E-book</T></h2>
+                  <p className="text-xs sm:text-sm text-gray-700"><T>Read the chapter PDF.</T></p>
                 </div>
-
-                {audioChapter && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-gray-700"><T>Choose Language</T></label>
-                      <select className="w-full p-3 border rounded-lg bg-white" value={ttsLanguage} onChange={(e) => setTtsLanguage(e.target.value as LangLabel)}>
-                        {LANGS.map((lang) => <option key={lang} value={lang}>{lang}</option>)}
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-gray-700"><T>What to listen</T></label>
-                      <select className="w-full p-3 border rounded-lg bg-white" value={listenKind} onChange={(e) => setListenKind(e.target.value as ListenKind)}>
-                        {LISTEN_KINDS.map((k) => <option key={k} value={k}><T>{k}</T></option>)} {/* Wrapped Chapter/Explanation */}
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {audioChapter && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-gray-700"><T>Rate:</T> {rate.toFixed(2)}</label>
-                      <input type="range" min={0.5} max={1.5} step={0.05} value={rate} onChange={(e) => setRate(parseFloat(e.target.value))} className="w-full accent-emerald-600"/>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <button onClick={handlePlayAudio} disabled={ttsLoading || !audioSubject || !audioChapter} className={`px-6 py-2.5 rounded-xl text-white shadow-sm transition ${ttsLoading || !audioSubject || !audioChapter ? "bg-emerald-300 cursor-not-allowed" : "bg-gradient-to-r from-emerald-500 via-emerald-500 to-emerald-600 hover:brightness-110"}`}>
-                    {ttsLoading ? <T>Preparing…</T> : <T>▶ Play Audio</T>}
-                  </button>
-                  <button onClick={handlePause} disabled={!speaking || paused} className="px-6 py-2.5 rounded-xl border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 transition"><T>⏸ Pause</T></button>
-                  <button onClick={handleResume} disabled={!speaking || !paused} className="px-6 py-2.5 rounded-xl border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 transition"><T>▶ Resume</T></button>
-                  <button onClick={handleStop} disabled={!speaking} className="px-6 py-2.5 rounded-xl border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 transition"><T>⏹ Stop</T></button>
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  <T>Tip: If you switch tabs, playback auto-pauses and will only continue when you press</T> <strong><T>Resume</T></strong>.
-                </p>
               </div>
-            </div>
-          </div>
 
-          {/* Chapter Explanation */}
-          <div className="relative bg-gradient-to-br from-pink-200 via-pink-100 to-pink-50 p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden">
-            <MessageCircle className="absolute -bottom-10 -left-10 h-40 w-40 text-pink-300 opacity-40 rotate-12" />
-            <MessageCircle className="h-12 w-12 text-pink-600 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2 text-pink-700"><T>Chapter Explanation</T></h2>
-            <p><T>Get simplified summaries and notes generated by AI.</T></p>
-            <div className="mt-4 space-y-3">
-              <select className="w-full p-3 border rounded-lg" value={explainSubject} onChange={(e)=>{ setExplainSubject(e.target.value); setExplainChapter(""); setExplainLanguage(""); }}>
-                <option value=""><T>Select Subject</T></option>
-                {subjects.map((s)=><option key={s} value={s}>{s}</option>)}
-              </select>
-              {explainSubject && (
-                <select className="w-full p-3 border rounded-lg" value={explainChapter} onChange={(e)=>{ setExplainChapter(e.target.value); setExplainLanguage(""); }}>
-                  <option value=""><T>Select Chapter</T></option>
-                  {getChaptersFor(explainSubject, studentClass).map((c)=><option key={c} value={c}>{c}</option>)}
-                </select>
-              )}
-              {explainSubject && explainChapter && (
-                <select className="w-full p-3 border rounded-lg" value={explainLanguage} onChange={(e)=>setExplainLanguage(e.target.value as LangLabel)}>
-                  <option value=""><T>Select Language</T></option>
-                  {LANGS.map((lang)=><option key={lang} value={lang}>{lang}</option>)}
-                </select>
-              )}
-              {explainSubject && explainChapter && explainLanguage && (
-                <a href={explanationPdf!} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition" onClick={onOpenExplanation}>
-                  <T>Open Explanation</T>
-                </a>
-              )}
-            </div>
-          </div>
+              {/* aligned selectors */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <Select value={ebookSubject} onValueChange={(v) => { setEbookSubject(v); setEbookChapterTitle(""); setEbookLanguage(""); }}>
+                  <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectContent>{combinedSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
 
-          {/* Take a Quiz */}
-          <div className="relative bg-gradient-to-br from-yellow-200 via-yellow-100 to-yellow-50 p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden">
-            <Eye className="absolute -bottom-10 -right-10 h-40 w-40 text-yellow-300 opacity-40 rotate-12" />
-            <Eye className="h-12 w-12 text-yellow-600 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2 text-yellow-700"><T>Take a Quiz</T></h2>
-            <p><T>Test your understanding with AI-generated quizzes.</T></p>
-            <div className="mt-4 space-y-3">
-              <select className="w-full p-3 border rounded-lg" value={quizSubject} onChange={(e)=>{ setQuizSubject(e.target.value); setQuizChapter(""); setQuizLanguage(""); }}>
-                <option value=""><T>Select Subject</T></option>
-                {subjects.map((s)=><option key={s} value={s}>{s}</option>)}
-              </select>
-              {quizSubject && (
-                <select className="w-full p-3 border rounded-lg" value={quizChapter} onChange={(e)=>setQuizChapter(e.target.value)}>
-                  <option value=""><T>Select Chapter</T></option>
-                  {getChaptersFor(quizSubject, studentClass).map((c)=><option key={c} value={c}>{c}</option>)}
-                </select>
-              )}
-              {quizSubject && quizChapter && (
-                <select className="w-full p-3 border rounded-lg" value={quizLanguage} onChange={(e)=>setQuizLanguage(e.target.value as LangLabel)}>
-                  <option value=""><T>Select Language</T></option>
-                  {LANGS.map((lang)=><option key={lang} value={lang}>{lang}</option>)}
-                </select>
-              )}
-              {quizSubject && quizChapter && quizLanguage && (
-                <button onClick={() => router.push(`/student/quiz?subject=${encodeURIComponent(quizSubject)}&chapter=${encodeURIComponent(quizChapter)}&language=${encodeURIComponent(quizLanguage)}`)} className="mt-4 inline-block px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
-                  <T>Start Quiz</T>
-                </button>
-              )}
-            </div>
+                <Select value={ebookChapterTitle} onValueChange={(v) => { setEbookChapterTitle(v); setEbookLanguage(""); }} disabled={!ebookSubject}>
+                  <SelectTrigger><SelectValue placeholder={ebookSubject ? "Chapter" : "Select Subject first"} /></SelectTrigger>
+                  <SelectContent>{getCombinedChapters(ebookSubject).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+
+                {ebookChapterTitle && !dynamicChapters.some(c => c.subject === ebookSubject && c.chapterTitle === ebookChapterTitle) && (
+                  <Select value={ebookLanguage} onValueChange={(v) => setEbookLanguage(v as LangLabel)}>
+                    <SelectTrigger><SelectValue placeholder="Language" /></SelectTrigger>
+                    <SelectContent>{LANGS.map(lang => <SelectItem key={lang} value={lang}>{lang}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* CTA pinned to bottom */}
+              <div className="mt-auto pt-3">
+                {ebookUrl ? (
+                  <a
+                    href={ebookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={onOpenEbook}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition"
+                  >
+                    <FileText className="h-4 w-4" /> <T>Open E-book PDF</T>
+                  </a>
+                ) : (
+                  ebookChapterTitle && (
+                    <p className="text-xs text-red-600 mt-1"><T>PDF not available for this selection (choose a language).</T></p>
+                  )
+                )}
+              </div>
+            </section>
+
+            {/* --- Audio Book Section --- */}
+            <section className="relative h-full flex flex-col bg-gradient-to-br from-emerald-200 via-emerald-100 to-emerald-50 p-6 sm:p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden lg:col-span-6">
+              <div className="flex items-center gap-3">
+                <PlayCircle className="h-10 w-10 text-emerald-600" />
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-emerald-700"><T>Audio Book</T></h2>
+                  <p className="text-xs sm:text-sm text-gray-700"><T>Listen to the chapter read aloud.</T></p>
+                </div>
+              </div>
+
+              {/* aligned selectors */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <Select value={audioSubject} onValueChange={(v) => { setAudioSubject(v); setAudioChapterTitle(""); resetPlayback(); }}>
+                  <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectContent>{combinedSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+
+                <Select value={audioChapterTitle} onValueChange={(v) => { setAudioChapterTitle(v); resetPlayback(); }} disabled={!audioSubject}>
+                  <SelectTrigger><SelectValue placeholder={audioSubject ? "Chapter" : "Select Subject first"} /></SelectTrigger>
+                  <SelectContent>{getCombinedChapters(audioSubject).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+
+                {audioChapterTitle && (
+                  <Select value={audioLanguage} onValueChange={(v) => { setAudioLanguage(v as LangLabel); resetPlayback(); }}>
+                    <SelectTrigger><SelectValue placeholder="Language" /></SelectTrigger>
+                    <SelectContent>{LANGS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* bottom area: controls + status */}
+              <div className="mt-auto pt-3">
+                {audioChapterTitle && (
+                  <div className="mb-3">
+                    <Label className="text-xs font-medium text-gray-600">
+                      <T>Playback Speed:</T> {rate.toFixed(1)}x
+                    </Label>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={1.5}
+                      step={0.1}
+                      value={rate}
+                      onChange={(e) => setRate(parseFloat(e.target.value))}
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-emerald-200 accent-emerald-600"
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handlePlayAudio}
+                    disabled={ttsLoading || !audioChapterTitle || speaking}
+                    className={`text-white shadow-sm transition ${ttsLoading || !audioChapterTitle ? "bg-emerald-300 cursor-not-allowed" : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:brightness-110"}`}
+                  >
+                    {ttsLoading ? (<><Loader2 className="h-4 w-4 mr-1 animate-spin" /> <T>Preparing…</T></>) : (<><Volume2 className="h-4 w-4 mr-1" /> <T>Play Audio</T></>)}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handlePause} disabled={!speaking || paused}>⏸ <T>Pause</T></Button>
+                  <Button size="sm" variant="outline" onClick={handleResume} disabled={!speaking || !paused}>▶ <T>Resume</T></Button>
+                  <Button size="sm" variant="outline" onClick={handleStop} disabled={!speaking}>⏹ <T>Stop</T></Button>
+                </div>
+
+                {ttsStatus && <p className="mt-2 text-xs p-2 rounded border bg-blue-50 border-blue-200 text-blue-700">{ttsStatus}</p>}
+                <p className="text-xs text-gray-500 mt-2"></p>
+              </div>
+            </section>
+
+            {/* --- Chapter Explanation Section (full width) --- */}
+            <section className="relative h-full flex flex-col bg-gradient-to-br from-pink-200 via-pink-100 to-pink-50 p-6 sm:p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden lg:col-span-12">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="h-10 w-10 text-pink-600" />
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-pink-700"><T>Chapter Explanation</T></h2>
+                  <p className="text-xs sm:text-sm text-gray-700"><T>Read the text content for this chapter.</T></p>
+                </div>
+              </div>
+
+              {/* aligned selectors */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <Select value={explainSubject} onValueChange={(v) => { setExplainSubject(v); setExplainChapterTitle(""); setExplainLanguage(""); }}>
+                  <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectContent>{combinedSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+
+                <Select value={explainChapterTitle} onValueChange={(v) => { setExplainChapterTitle(v); setExplainLanguage(""); }} disabled={!explainSubject}>
+                  <SelectTrigger><SelectValue placeholder={explainSubject ? "Chapter" : "Select Subject first"} /></SelectTrigger>
+                  <SelectContent>{getCombinedChapters(explainSubject).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+
+                {explainChapterTitle && !dynamicChapters.some(c => c.subject === explainSubject && c.chapterTitle === explainChapterTitle) && (
+                  <Select value={explainLanguage} onValueChange={(v) => setExplainLanguage(v as LangLabel)}>
+                    <SelectTrigger><SelectValue placeholder="Language" /></SelectTrigger>
+                    <SelectContent>{LANGS.map(lang => <SelectItem key={lang} value={lang}>{lang}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* content / CTA pinned */}
+              <div className="mt-auto pt-3">
+                {explanationContentSource ? (
+                  explanationContentSource.type === 'text' ? (
+                    explanationContentSource.content ? (
+                      <ScrollArea className="h-60 w-full rounded-xl border border-pink-200 bg-white/70 p-4">
+                        <p className="text-sm whitespace-pre-wrap">{explanationContentSource.content}</p>
+                      </ScrollArea>
+                    ) : (
+                      <p className="text-sm text-orange-700 mt-2 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                        <T>No text could be extracted from the PDF for this chapter.</T>
+                      </p>
+                    )
+                  ) : (
+                    <a
+                      href={explanationContentSource.content}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-2 px-5 py-2.5 bg-pink-600 text-white text-sm font-medium rounded-xl hover:bg-pink-700 transition"
+                      onClick={(e) => { e.preventDefault(); writeContentRead({ kind: 'explanation', subject: explainSubject, chapter: explainChapterTitle }); window.open(explanationContentSource.content, '_blank', 'noopener,noreferrer'); }}
+                    >
+                      <FileText className="h-4 w-4" /> <T>Open Explanation File</T>
+                    </a>
+                  )
+                ) : (
+                  explainChapterTitle && <p className="text-xs text-red-600 mt-1"><T>Explanation content not available (choose a language).</T></p>
+                )}
+              </div>
+            </section>
+
+            {/* --- Take a Quiz Section --- */}
+            <section className="relative h-full flex flex-col bg-gradient-to-br from-yellow-200 via-yellow-100 to-yellow-50 p-6 sm:p-8 rounded-3xl shadow-lg hover:shadow-2xl transition overflow-hidden lg:col-span-6">
+              <div className="flex items-center gap-3">
+                <Eye className="h-10 w-10 text-yellow-600" />
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-yellow-700"><T>Take a Quiz</T></h2>
+                  <p className="text-xs sm:text-sm text-gray-700"><T>Test your understanding.</T></p>
+                </div>
+              </div>
+
+              {/* aligned selectors */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <Select value={quizSubject} onValueChange={(v) => { setQuizSubject(v); setQuizChapterTitle(""); setQuizLanguage(""); }}>
+                  <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectContent>{combinedSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+
+                <Select value={quizChapterTitle} onValueChange={(v) => { setQuizChapterTitle(v); setQuizLanguage(""); }} disabled={!quizSubject}>
+                  <SelectTrigger><SelectValue placeholder={quizSubject ? "Chapter" : "Select Subject first"} /></SelectTrigger>
+                  <SelectContent>{getCombinedChapters(quizSubject).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+
+                {quizChapterTitle && (
+                  <Select value={quizLanguage} onValueChange={(v) => setQuizLanguage(v as LangLabel)}>
+                    <SelectTrigger><SelectValue placeholder="Quiz Language" /></SelectTrigger>
+                    <SelectContent>{LANGS.map(lang => <SelectItem key={lang} value={lang}>{lang}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* CTA pinned to bottom */}
+              <div className="mt-auto pt-3">
+                {quizSubject && quizChapterTitle && quizLanguage && (
+                  <Button
+                    onClick={() => router.push(`/student/quiz?subject=${encodeURIComponent(quizSubject)}&chapter=${encodeURIComponent(quizChapterTitle)}&class=${studentClassGrade}&language=${encodeURIComponent(quizLanguage)}`)}
+                    className="px-5 py-2.5 bg-yellow-600 text-white text-sm font-medium rounded-xl hover:bg-yellow-700 transition"
+                  >
+                    <T>Start Quiz</T>
+                  </Button>
+                )}
+              </div>
+            </section>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

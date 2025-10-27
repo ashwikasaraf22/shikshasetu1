@@ -18,9 +18,6 @@ import { useRouter } from 'next/navigation';
 
 /* ---------------------------------------------------------
    Lightweight client-side language detector
-   - 'hi' if any Devanagari chars
-   - 'en' if ASCII-ish and no Devanagari
-   - otherwise undefined (let API handle)
 --------------------------------------------------------- */
 function detectLang(str: string | undefined): 'en' | 'hi' | undefined {
   if (!str) return undefined;
@@ -41,7 +38,6 @@ async function translateViaApi(
 ): Promise<string> {
   if (!text?.trim()) return '';
 
-  // Short-circuit if already in target (using detector as a guard)
   const detected = detectLang(text);
   if ((detected && detected === targetLang.toLowerCase()) ||
       (targetLang.toLowerCase() === 'en' && detected === 'en')) {
@@ -95,13 +91,11 @@ export default function DoubtSolverPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
-  // EN versions state
   const [selectedDoubtEnglish, setSelectedDoubtEnglish] = useState<string>('');
   const [translatedMsgMap, setTranslatedMsgMap] = useState<Record<string, string>>({});
   const [previewEnMap, setPreviewEnMap] = useState<Record<string, string>>({});
   const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
 
-  // Teacher profile fields
   const teacherSubject = (user as any)?.subject || 'Science';
   const teacherClass = (user as any)?.classGrade || null;
 
@@ -146,7 +140,6 @@ export default function DoubtSolverPage() {
               continue;
             }
 
-            // Use detector FIRST; ignore incorrect Firestore language flags
             const detected = detectLang(baseText);
             const shouldTranslate = detected !== 'en';
 
@@ -157,7 +150,7 @@ export default function DoubtSolverPage() {
                 setPreviewEnMap((prev) => ({ ...prev, [d.id]: en }));
               });
             } else {
-              next[d.id] = baseText; // already English
+              next[d.id] = baseText;
               changed = true;
             }
           }
@@ -169,7 +162,6 @@ export default function DoubtSolverPage() {
     );
 
     return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, teacherSubject, teacherClass]);
 
   /* -------------------------------------------------------
@@ -257,11 +249,10 @@ export default function DoubtSolverPage() {
         setIsTranslating((prev) => ({ ...prev, [msgId]: false }));
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, selectedDoubt, translatedMsgMap, isTranslating]);
 
   /* -------------------------------------------------------
-     Send teacher reply (translate to student's language)
+     Send teacher reply
   ------------------------------------------------------- */
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedDoubt || !user) return;
@@ -270,7 +261,6 @@ export default function DoubtSolverPage() {
     setNewMessage('');
 
     try {
-      // Prefer stored language, but fall back to detector on the initial doubt text
       const baseText: string =
         (selectedDoubt?.text_original ||
           selectedDoubt?.text ||
@@ -291,9 +281,34 @@ export default function DoubtSolverPage() {
     } catch (e: any) {
       console.error('Error sending message:', e);
       alert(e?.message || 'Failed to send your message.');
-      setNewMessage(englishInput); // Restore on error
+      setNewMessage(englishInput);
     }
   };
+
+  /* -------------------------------------------------------
+     Group doubts by class
+  ------------------------------------------------------- */
+  const doubtsByClass = useMemo(() => {
+    const grouped: Record<number, any[]> = {};
+    
+    doubts.forEach((doubt) => {
+      const classNum = parseInt(doubt.classGrade) || 0;
+      if (!grouped[classNum]) {
+        grouped[classNum] = [];
+      }
+      grouped[classNum].push(doubt);
+    });
+
+    // Sort classes in ascending order
+    const sortedClasses = Object.keys(grouped)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    return sortedClasses.map((classNum) => ({
+      class: classNum,
+      doubts: grouped[classNum],
+    }));
+  }, [doubts]);
 
   if (loading)
     return (
@@ -303,52 +318,94 @@ export default function DoubtSolverPage() {
     );
 
   /* -------------------------------------------------------
-     UI
+     UI - Tabular Format by Class
   ------------------------------------------------------- */
-  const doubtCards = useMemo(() => {
-    return doubts.map((doubt) => {
-      const previewEN = previewEnMap[doubt.id] ?? '(loading preview...)';
-      return (
-        <Card
-          key={doubt.id}
-          className="cursor-pointer bg-white/80 border border-purple-100 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition"
-          onClick={() => setSelectedDoubt(doubt)}
-        >
-          <CardContent className="p-5">
-            <h2 className="text-lg font-semibold text-purple-700 mb-1">
-              {doubt.subject} {doubt.classGrade ? `• Class ${doubt.classGrade}` : ''}
-            </h2>
-            <p className="text-gray-800 font-medium" lang="en" translate="no">
-              {previewEN}
-            </p>
-            <p className="text-sm text-gray-500 mt-2">Chapter: {doubt.chapter}</p>
-            <p className="text-sm text-gray-500">Status: {doubt.status || 'Pending'}</p>
-          </CardContent>
-        </Card>
-      );
-    });
-  }, [doubts, previewEnMap]);
-
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-[#E8FFF8] via-[#FFF0F6] to-[#FFF9E7] p-8">
       <h1 className="text-4xl font-bold text-purple-700 mb-8 text-center">
         Doubt Solver 💬
       </h1>
 
-      {/* Doubts List */}
+      {/* Doubts Table by Class */}
       {!selectedDoubt && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {doubtCards}
-          {doubts.length === 0 && (
-            <p className="text-center text-gray-600 col-span-full mt-20">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {doubtsByClass.length === 0 && (
+            <p className="text-center text-gray-600 mt-20">
               No new doubts yet for {teacherSubject}
               {teacherClass ? ` (Class ${teacherClass})` : ''}.
             </p>
           )}
+
+          {doubtsByClass.map(({ class: classNum, doubts: classDoubts }) => (
+            <div key={classNum} className="bg-white/90 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-purple-200">
+              <h2 className="text-2xl font-bold text-purple-800 mb-4">
+                Class {classNum} Doubts
+              </h2>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-purple-100 border-b-2 border-purple-300">
+                      <th className="text-left p-4 font-semibold text-purple-900">Subject</th>
+                      <th className="text-left p-4 font-semibold text-purple-900">Question</th>
+                      <th className="text-left p-4 font-semibold text-purple-900">Chapter</th>
+                      <th className="text-left p-4 font-semibold text-purple-900">Status</th>
+                      <th className="text-center p-4 font-semibold text-purple-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classDoubts.map((doubt, idx) => {
+                      const previewEN = previewEnMap[doubt.id] ?? '(loading preview...)';
+                      return (
+                        <tr
+                          key={doubt.id}
+                          className={`border-b border-purple-100 hover:bg-purple-50 transition ${
+                            idx % 2 === 0 ? 'bg-white' : 'bg-purple-50/30'
+                          }`}
+                        >
+                          <td className="p-4 text-purple-700 font-medium">
+                            {doubt.subject}
+                          </td>
+                          <td className="p-4 text-gray-800" lang="en" translate="no">
+                            <div className="max-w-md truncate" title={previewEN}>
+                              {previewEN}
+                            </div>
+                          </td>
+                          <td className="p-4 text-gray-600">
+                            {doubt.chapter}
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              doubt.status === 'Pending' 
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : doubt.status === 'Active'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {doubt.status || 'Pending'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <Button
+                              onClick={() => setSelectedDoubt(doubt)}
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Chat Interface */}
+      {/* Chat Interface (unchanged) */}
       {selectedDoubt && (
         <div className="relative max-w-3xl mx-auto bg-white/90 backdrop-blur-md border border-purple-200 rounded-2xl shadow-2xl p-6">
           <div className="flex items-center justify-between mb-4">
